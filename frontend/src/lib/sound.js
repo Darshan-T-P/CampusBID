@@ -52,7 +52,7 @@ export function playBidChime() {
     osc1.stop(now + 0.36)
     osc2.start(now + 0.07)
     osc2.stop(now + 0.46)
-  } catch (err) {
+  } catch {
     // Gracefully handle browser autoplay policies before user interaction
   }
 }
@@ -82,7 +82,7 @@ export function playLeaderChime() {
       osc.start(start)
       osc.stop(start + 0.42)
     })
-  } catch (err) {
+  } catch {
     // Ignore autoplay restriction
   }
 }

@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Body
 
 from app.api.deps import CurrentUser, DbSession
+from app.core.events import broadcaster
 from app.api.errors import listing_http_error
 from app.schemas.listing import ListingDetail
 from app.core.ratelimit import enforce
@@ -15,7 +16,10 @@ router = APIRouter(tags=["sale"])
 
 
 def _detail(db, listing):
-    return listing_service.listing_detail(db, listing)
+    detail = listing_service.listing_detail(db, listing)
+    # Tell everyone looking at this auction (approved, handed over, ...) without waiting for their next refresh.
+    broadcaster.publish_nowait("status", {"listing_id": listing.id, "listing": detail.model_dump(mode="json")}, listing_id=listing.id)
+    return detail
 
 
 @router.post("/listings/{listing_id}/approve", response_model=ListingDetail)

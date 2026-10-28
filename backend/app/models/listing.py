@@ -81,5 +81,7 @@ class ListingImage(Base):
     listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id"), index=True)
     path: Mapped[str] = mapped_column(String(255))
     position: Mapped[int] = mapped_column(Integer, default=0)
+    # Fingerprint of the uploaded file, so the same photo posted twice by one seller can be noticed.
+    sha256: Mapped[str | None] = mapped_column(String(64), index=True, default=None)
 
     listing: Mapped[Listing] = relationship(back_populates="images")

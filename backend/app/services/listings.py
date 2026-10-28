@@ -1,7 +1,10 @@
 """Creating and presenting listings. Bidding and closing rules live in auction.py."""
 
 import enum
+import difflib
+import hashlib
 import io
+import re
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -15,6 +18,7 @@ from app.core.config import settings
 from app.models import Bid, Category, Condition, Listing, ListingImage, ListingStatus, User
 from app.schemas.listing import ListingCard, ListingDetail, ListingPage, MyBid, SellerPublic
 from app.services.auction import lock_listing_for_seller, min_valid_bid
+from app.services import wants
 from app.services.errors import ListingError
 
 MIN_IMAGES = 1
@@ -138,7 +142,9 @@ def _write_images(
         optimized = _optimize_image(data, ext)
         path.write_bytes(optimized)
         written.append(path)
-        listing.images.append(ListingImage(path=f"listings/{listing.id}/{name}", position=start + offset))
+        listing.images.append(
+            ListingImage(path=f"listings/{listing.id}/{name}", position=start + offset, sha256=hashlib.sha256(data).hexdigest())
+        )
 
 
 def _discard_files(paths: list[Path]) -> None:
@@ -150,6 +156,50 @@ def _discard_files(paths: list[Path]) -> None:
             folder.rmdir()  # only succeeds when empty
         except OSError:
             pass
+
+
+class DuplicateListing(ListingError):
+    """The seller already has a live listing that looks like this one. They can confirm it is a second item."""
+
+    def __init__(self, existing: Listing, reason: str):
+        what = {
+            "photo": f"One of these photos is already on your open listing \"{existing.title}\".",
+            "title": f"You already have an open listing called \"{existing.title}\".",
+            "similar": f"You already have a very similar open listing, \"{existing.title}\".",
+        }[reason]
+        super().__init__(what, "conflict")
+        self.existing = existing
+        self.reason = reason
+
+
+_LIVE = (ListingStatus.active, ListingStatus.pending_approval, ListingStatus.reserved)
+
+
+def _normalize_title(title: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
+
+
+def find_possible_duplicate(db: Session, seller_id: int, title: str, category: Category, blobs: list[bytes]) -> DuplicateListing | None:
+    """Does this seller already have a LIVE listing that looks like the one they are posting?
+
+    Same photo (by file fingerprint), the same title once case and punctuation are ignored, or a near-identical title in
+    the same category. Cancelled, unsold and finished listings don't count: re-listing those is normal.
+    """
+    mine = db.scalars(
+        select(Listing).where(Listing.seller_id == seller_id, Listing.status.in_(_LIVE)).options(selectinload(Listing.images))
+    ).all()
+    fingerprints = {hashlib.sha256(b).hexdigest() for b in blobs}
+    wanted = _normalize_title(title)
+    for existing in mine:
+        if any(image.sha256 in fingerprints for image in existing.images if image.sha256):
+            return DuplicateListing(existing, "photo")
+    for existing in mine:
+        theirs = _normalize_title(existing.title)
+        if theirs == wanted:
+            return DuplicateListing(existing, "title")
+        if existing.category == category and difflib.SequenceMatcher(None, theirs, wanted).ratio() >= 0.85:
+            return DuplicateListing(existing, "similar")
+    return None
 
 
 def create_listing(
@@ -165,6 +215,7 @@ def create_listing(
     closes_at: datetime,
     images: list[bytes],
     handover_spot: str | None = None,
+    confirm_duplicate: bool = False,
     now: datetime | None = None,
 ) -> Listing:
     now = now or utcnow()
@@ -182,10 +233,15 @@ def create_listing(
         now,
     )
     extensions = _validate_images(images)
+    if not confirm_duplicate:
+        duplicate = find_possible_duplicate(db, seller.id, fields["title"], fields["category"], images)
+        if duplicate is not None:
+            raise duplicate
 
     listing = Listing(seller_id=seller.id, **fields)
     db.add(listing)
     db.flush()  # assigns listing.id, needed for the photo folder name
+    wants.notify_matches(db, listing)  # students who saved a matching alert hear about it (same transaction)
 
     written: list[Path] = []
     try:

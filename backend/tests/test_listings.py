@@ -20,6 +20,8 @@ def form(**overrides):
         "starting_price": "500",
         "min_increment": "50",
         "closes_at": future(),
+        # Most tests post several look-alike listings on purpose; the duplicate check has its own tests (test_duplicates.py).
+        "confirm_duplicate": "true",
     }
     data.update(overrides)
     return {k: v for k, v in data.items() if v is not None}

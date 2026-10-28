@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import auth, bids, listings, me, notifications, questions, sale, watchlist
+from app.api.routes import auth, bids, listings, me, notifications, questions, sale, wants, watchlist
 from app.core.clock import utcnow
 from app.core.config import settings
 from app.core.middleware import SecurityMiddleware
@@ -70,6 +70,7 @@ app.include_router(sale.router)
 app.include_router(notifications.router)
 app.include_router(me.router)
 app.include_router(watchlist.router)
+app.include_router(wants.router)
 app.include_router(questions.router)
 
 
@@ -93,3 +94,11 @@ app.mount("/media", CachedStaticFiles(directory=settings.media_dir, check_dir=Fa
 def health():
     # Doubles as the server-clock source clients can use to calibrate countdowns.
     return {"status": "ok", "server_time": utcnow()}
+
+
+# Production: one process serves the pages and the API (see app/spa.py). Everything above stays the plain API app.
+if settings.serve_frontend:
+    from app.spa import build_production_app
+
+    api = app
+    app = build_production_app(api, Path(settings.frontend_dist))

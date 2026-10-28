@@ -79,9 +79,9 @@ export function ListingPage() {
   }, [marker, id, queryClient])
 
   useEffect(() => {
-    if (listing) document.title = `${listing.title} · Relay`
+    if (listing) document.title = `${listing.title} · CampusBid`
     return () => {
-      document.title = 'Relay'
+      document.title = 'CampusBid'
     }
   }, [listing?.title]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -319,11 +319,11 @@ export function ListingPage() {
                 <div className="tab-pane-autobids">
                   <div className="tab-pane-header">
                     <h3 className="section-subtitle">
-                      Automatic Proxy Maximums {autoBidsQuery.data?.length > 0 && <span className="muted">({autoBidsQuery.data.length})</span>}
+                      Automatic Bids {autoBidsQuery.data?.length > 0 && <span className="muted">({autoBidsQuery.data.length})</span>}
                     </h3>
                   </div>
                   <p className="muted small info-banner">
-                    <Icon name="shield" size={14} /> Maximum ceilings are transparent and visible to all students. The system only bids on your behalf as much as necessary to maintain the lead.
+                    <Icon name="shield" size={14} /> Maximum limits are transparent and visible to all students. The system only bids on your behalf as much as necessary to maintain the lead.
                   </p>
                   <AutoBidList autoBids={autoBidsQuery.data ?? []} />
                 </div>

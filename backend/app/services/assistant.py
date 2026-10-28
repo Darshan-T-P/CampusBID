@@ -35,7 +35,7 @@ logger = logging.getLogger("campusbid.assistant")
 MAX_STEPS = 5  # model <-> tool round trips per question
 MAX_CARDS = 6
 
-SYSTEM_PROMPT = """You are Relay's shopping assistant for a campus auction marketplace where students sell and buy second-hand items (cycles, calculators, books, electronics, furniture). Prices are in Indian rupees (₹). The highest bid when the timer ends wins. Automatic bidding bids only as much as needed to keep the student in front, never above the maximum they set, and maximums are public.
+SYSTEM_PROMPT = """You are CampusBid's shopping assistant for a campus auction marketplace where students sell and buy second-hand items (cycles, calculators, books, electronics, furniture). Prices are in Indian rupees (₹). The highest bid when the timer ends wins. Automatic bidding bids only as much as needed to keep the student in front, never above the maximum they set, and maximums are public.
 
 How you work:
 - Use the tools to look at real listings. Never invent a listing, price or id. When searching, set only the filters the student actually asked for (a budget, a category, a keyword); do not add others such as closing_soon or a sort order unless they asked.

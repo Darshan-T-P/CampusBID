@@ -41,7 +41,14 @@ export function AutoBidBox({ listing, myMax, leading }) {
     },
     onError: (e) => {
       setNotice(null)
-      setError(errorMessage(e))
+      if (e.code === 'too_low') {
+        const freshMin = e.detail?.min_bid || floor
+        setError(`A higher bid was just placed! Your maximum must be at least ${freshMin ? formatRupees(freshMin) : 'higher'}.`)
+      } else if (e.code === 'closed') {
+        setError('This auction has closed. No further maximums can be set.')
+      } else {
+        setError(errorMessage(e))
+      }
       queryClient.invalidateQueries({ queryKey: ['listing', id] })
     },
   })
@@ -72,15 +79,15 @@ export function AutoBidBox({ listing, myMax, leading }) {
   return (
     <section className="auto-box" aria-label="Automatic bidding">
       <div className="auto-head">
-        <strong>Automatic bidding</strong>
+        <strong>Automatic Bidding</strong>
         <span className="muted small">
-          Set a maximum and the app bids for you, only as much as needed to keep you in front. Maximums are public.
+          Set your maximum limit and CampusBid will bid for you automatically, only as needed to keep you in the lead. Limits are public.
         </span>
       </div>
 
       {myMax != null && !editing && (
         <p className="auto-current">
-          Your maximum: <strong>{formatRupees(myMax)}</strong>
+          Your limit: <strong>{formatRupees(myMax)}</strong>
           <span className="auto-actions">
             <button type="button" className="link-button" onClick={() => { setEditing(true); setTyped(String(myMax)); setNotice(null) }}>
               Change
@@ -94,19 +101,19 @@ export function AutoBidBox({ listing, myMax, leading }) {
 
       {showForm && (
         <form onSubmit={onSubmit} className="auto-form" noValidate>
-          <label htmlFor="auto-max" className="sr-only">Your maximum (₹)</label>
+          <label htmlFor="auto-max" className="sr-only">Your maximum limit (₹)</label>
           <div className="bid-row">
             <input
               id="auto-max"
               inputMode="numeric"
               autoComplete="off"
-              placeholder={floor != null ? `At least ${floor}` : 'Maximum in ₹'}
+              placeholder={floor != null ? `At least ${floor}` : 'Maximum limit in ₹'}
               value={typed}
               onChange={(e) => { setTyped(e.target.value); setError(null) }}
               aria-invalid={error ? 'true' : undefined}
             />
             <button className="btn btn-ghost" disabled={save.isPending}>
-              {save.isPending ? 'Saving…' : myMax == null ? 'Set maximum' : 'Update'}
+              {save.isPending ? 'Saving…' : myMax == null ? 'Set limit' : 'Update limit'}
             </button>
           </div>
           {editing && (

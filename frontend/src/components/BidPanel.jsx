@@ -58,15 +58,25 @@ export function BidPanel({ listing, myBid, myMax = null }) {
     },
     onError: (e) => {
       setNotice(null)
-      setError(errorMessage(e))
-      // Someone got in first: jump the box to the fresh minimum the server reports.
-      if (e.code === 'too_low' && e.detail?.min_bid) setTouched(false)
+      if (e.code === 'too_low') {
+        const freshMin = e.detail?.min_bid || minBid
+        setError(`Another student placed a bid just before you! The next minimum bid is ${freshMin ? formatRupees(freshMin) : 'higher'}.`)
+        setTouched(false)
+        if (freshMin) setTyped(String(freshMin))
+      } else if (e.code === 'closed') {
+        setError('This auction has closed. No further bids can be accepted.')
+      } else if (e.code === 'already_leading') {
+        setError('You are already the highest bidder!')
+      } else {
+        setError(errorMessage(e))
+      }
       queryClient.invalidateQueries({ queryKey: ['listing', id] })
     },
   })
 
   function onSubmit(event) {
     event.preventDefault()
+    if (placeBid.isPending) return
     setNotice(null)
     const problem = validateBid(text, minBid)
     if (problem) {

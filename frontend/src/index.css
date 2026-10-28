@@ -2238,7 +2238,12 @@ textarea {
   .detail-grid {
     display: flex;
     flex-direction: column;
+    align-items: stretch; /* the base rule says "start", which let the no-wrap tab row make the page 115px too wide */
     gap: 20px;
+  }
+  .detail-grid > * {
+    min-width: 0;
+    max-width: 100%;
   }
   .area-gallery-and-tabs {
     display: contents;
@@ -4389,4 +4394,83 @@ input:disabled {
   font-size: 0.7rem;
   font-weight: 600;
   vertical-align: middle;
+}
+
+/* Phones: the Q&A "ask" form stacks instead of squeezing the input to a few characters. */
+@media (max-width: 560px) {
+  .ask-label {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .ask-input-row {
+    flex-direction: column;
+  }
+  .ask-input-row .btn {
+    width: 100%;
+  }
+  .listing-tab-content {
+    padding: 18px 16px;
+  }
+}
+
+/* --- Alerts for new listings (saved wants) --- */
+.wants-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.wants-form {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.wants-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wants-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+@media (max-width: 700px) {
+  .wants-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- "Is this a second item?" (duplicate listing check) --- */
+.duplicate-box {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-md);
+  background: #fffbeb;
+}
+
+.duplicate-box h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #92400e;
+}
+
+.duplicate-box p {
+  margin: 0;
 }

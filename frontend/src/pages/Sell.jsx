@@ -106,6 +106,10 @@ export function Sell() {
   const [files, setFiles] = useState([])
   const [submitted, setSubmitted] = useState(false)
   const [serverError, setServerError] = useState(null)
+  // The server found a similar live listing of this seller's and is asking "is this a second item?".
+  const [duplicate, setDuplicate] = useState(null)
+  const duplicateBox = useRef(null)
+  const lastForm = useRef(null) // what was just sent, so "Yes, it's a second one" can send it again with the confirmation
   // Set the instant a publish starts. `publish.isPending` only flips after React re-renders, so a fast
   // double-tap could otherwise send the form twice and create two identical auctions.
   const inFlight = useRef(false)
@@ -118,6 +122,11 @@ export function Sell() {
     setValues((v) => ({ ...v, closesAt: toLocalInputValue(new Date(serverNow() + ms)) }))
   }
 
+  useEffect(() => {
+    // The prompt sits below the form while the Publish bar stays in view, so bring it to the seller's attention.
+    if (duplicate) duplicateBox.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+  }, [duplicate])
+
   const publish = useMutation({
     mutationFn: (formData) => api('/listings', { method: 'POST', form: formData }),
     onSuccess: (listing) => {
@@ -127,6 +136,10 @@ export function Sell() {
     },
     onError: (e) => {
       inFlight.current = false // let the seller fix the problem and try again
+      if (e.code === 'possible_duplicate') {
+        setDuplicate({ message: e.message, existing: e.detail?.existing, reason: e.detail?.reason })
+        return
+      }
       setServerError(errorMessage(e))
     },
   })
@@ -136,6 +149,7 @@ export function Sell() {
     if (inFlight.current) return
     setSubmitted(true)
     setServerError(null)
+    setDuplicate(null)
     if (Object.keys(validateListing(values, files, serverNow())).length > 0) return
 
     const form = new FormData()
@@ -149,8 +163,19 @@ export function Sell() {
     // The picker gives local time with no zone; the server needs an absolute moment, so send UTC.
     form.append('closes_at', parseLocalInput(values.closesAt).toISOString())
     files.forEach((file) => form.append('images', file))
+    lastForm.current = form
     inFlight.current = true
     publish.mutate(form)
+  }
+
+  // "Yes, this is a second item": send exactly the same form again, with the seller's confirmation.
+  function postAnyway() {
+    if (inFlight.current || !lastForm.current) return
+    lastForm.current.set('confirm_duplicate', 'true')
+    setDuplicate(null)
+    setServerError(null)
+    inFlight.current = true
+    publish.mutate(lastForm.current)
   }
 
   const verified = user?.is_verified
@@ -319,6 +344,32 @@ export function Sell() {
             </label>
           </section>
 
+          {duplicate && (
+            <div className="duplicate-box" role="alertdialog" aria-labelledby="dup-h" ref={duplicateBox}>
+              <h3 id="dup-h">
+                <Icon name="package" size={17} /> Is this a second item?
+              </h3>
+              <p>{duplicate.message}</p>
+              {duplicate.existing && (
+                <p className="muted small">
+                  <Link to={`/listings/${duplicate.existing.id}`}>{duplicate.existing.title}</Link> · {formatRupees(duplicate.existing.price)}
+                </p>
+              )}
+              <div className="form-actions">
+                <button type="button" className="btn btn-primary btn-sm" onClick={postAnyway} disabled={publish.isPending}>
+                  Yes, it's a second item: post it
+                </button>
+                {duplicate.existing && (
+                  <Link to={`/listings/${duplicate.existing.id}`} className="btn btn-ghost btn-sm">
+                    No, show my existing listing
+                  </Link>
+                )}
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDuplicate(null)}>
+                  Change this one
+                </button>
+              </div>
+            </div>
+          )}
           {serverError && (
             <p className="error" role="alert">
               {serverError}

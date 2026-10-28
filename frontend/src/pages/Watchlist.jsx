@@ -3,6 +3,7 @@ import { mediaUrl } from '../api/client'
 import { errorMessage } from '../api/errors'
 import { Countdown } from '../components/Countdown'
 import { StatusBadge } from '../components/StatusBadge'
+import { WantsPanel } from '../components/WantsPanel'
 import { WatchButton } from '../components/WatchButton'
 import { useWatchlist } from '../hooks/useWatchlist'
 import { formatRupees } from '../lib/format'
@@ -28,6 +29,7 @@ export function Watchlist() {
   return (
     <section>
       <h1>Watchlist</h1>
+      <WantsPanel />
       <p className="muted">Auctions you saved. You'll get a reminder an hour and five minutes before each one closes, and be told how it ended.</p>
       {items.length === 0 ? (
         <div className="empty card">

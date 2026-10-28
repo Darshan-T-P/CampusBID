@@ -23,6 +23,7 @@ from app.models import (
     Notification,
     PasswordReset,
     User,
+    Want,
     Watch,
 )
 from app.services.auction import begin_write, close_if_due
@@ -76,7 +77,7 @@ def delete_account(db: Session, user_id: int, now: datetime | None = None) -> st
             db.commit()  # keep the settled auctions
             raise AccountError("You can't delete your account yet: " + "; ".join(reasons) + ".", "conflict")
 
-        for model in (Notification, Watch, ClosingReminder, AutoBid, EmailVerification, PasswordReset):
+        for model in (Notification, Watch, Want, ClosingReminder, AutoBid, EmailVerification, PasswordReset):
             db.execute(delete(model).where(model.user_id == user_id))
         has_history = (
             db.scalar(select(func.count()).select_from(Listing).where(Listing.seller_id == user_id))

@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     groq_model: str = "openai/gpt-oss-120b"  # must support tool calling; list what your key can use at /openai/v1/models
     groq_base_url: str = "https://api.groq.com/openai/v1"
     assistant_timeout: int = 25
+    # Production: serve the built frontend from this server (the API moves under /api). Off in development.
+    serve_frontend: bool = False
+    frontend_dist: str = "../frontend/dist"
     # Demo/dev switch: relaxes the domain requirement and prints verification codes to the log.
     dev_mode: bool = False
     # Skip the email step and mark new accounts verified (demos, local testing).

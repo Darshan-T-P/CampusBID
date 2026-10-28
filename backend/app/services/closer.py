@@ -13,6 +13,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
+from app.core.events import broadcaster
 from app.services.auction import close_due_listings, has_due_listings
 from app.services.watchlist import send_due_reminders
 
@@ -28,6 +29,8 @@ def sweep_once(session_factory: Callable[[], Session], now: datetime | None = No
             closed = close_due_listings(db, now)
             for listing in closed:
                 logger.info("Closed listing %s -> %s", listing.id, listing.status.value)
+                # Viewers learn it ended right now, not at their next refresh.
+                broadcaster.publish_nowait("closed", {"listing_id": listing.id, "status": listing.status.value}, listing_id=listing.id)
         send_due_reminders(db, now)  # cheap read first; locks only when something is due
         return len(closed)
 

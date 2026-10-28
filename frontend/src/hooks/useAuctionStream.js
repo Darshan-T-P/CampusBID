@@ -48,9 +48,32 @@ export function useAuctionStream(listingId, currentUserId) {
           queryClient.invalidateQueries({ queryKey: ['auto-bids', String(listingId)] })
           queryClient.invalidateQueries({ queryKey: ['my-bids'] })
           queryClient.invalidateQueries({ queryKey: ['listings'] })
-        } catch (err) {
+        } catch {
           // Bad payload, ignore
         }
+      })
+
+      // The auction changed state (approved, handed over, cancelled): the event carries the fresh listing.
+      eventSource.addEventListener('status', (e) => {
+        try {
+          const payload = JSON.parse(e.data)
+          if (payload.listing) queryClient.setQueryData(['listing', String(listingId)], payload.listing)
+        } catch {
+          /* a bad payload: the next poll corrects it */
+        }
+        queryClient.invalidateQueries({ queryKey: ['my-bids'] })
+        queryClient.invalidateQueries({ queryKey: ['my-listings'] })
+        queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      })
+
+      // The timer ran out and the server closed the auction: refresh at once instead of at the next poll.
+      eventSource.addEventListener('closed', () => {
+        queryClient.invalidateQueries({ queryKey: ['listing', String(listingId)] })
+        queryClient.invalidateQueries({ queryKey: ['bids', String(listingId)] })
+        queryClient.invalidateQueries({ queryKey: ['my-bids'] })
+        queryClient.invalidateQueries({ queryKey: ['my-listings'] })
+        queryClient.invalidateQueries({ queryKey: ['listings'] })
+        queryClient.invalidateQueries({ queryKey: ['notifications'] })
       })
 
       eventSource.addEventListener('question_asked', () => {
@@ -67,7 +90,7 @@ export function useAuctionStream(listingId, currentUserId) {
         setIsConnected(false)
         // Browser EventSource automatically attempts reconnection
       }
-    } catch (err) {
+    } catch {
       // EventSource failed
     }
 

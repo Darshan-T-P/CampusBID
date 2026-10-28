@@ -19,6 +19,8 @@ from app.services.listings import MAX_IMAGE_BYTES, MAX_PRICE, Sort
 
 router = APIRouter(tags=["listings"])
 
+STREAM_PING_SECONDS = 15.0  # a keep-alive comment this often, so proxies don't close an idle stream
+
 def _read_uploads(files: list[UploadFile]) -> list[bytes]:
     # Read at most one byte past the limit: enough to detect "too big" without loading a huge upload.
     return [f.file.read(MAX_IMAGE_BYTES + 1) for f in files]
@@ -36,6 +38,7 @@ def create_listing(
     min_increment: Annotated[int, Form(ge=1, le=MAX_PRICE)] = 1,
     description: Annotated[str, Form(max_length=5000)] = "",
     handover_spot: Annotated[str | None, Form(max_length=120)] = None,
+    confirm_duplicate: Annotated[bool, Form(description="Yes, this really is a second item")] = False,
     images: Annotated[list[UploadFile], File()] = [],
 ):
     enforce(f"list:user:{user.id}", limit=20, window=3600)
@@ -53,7 +56,24 @@ def create_listing(
             closes_at=closes_at,
             images=blobs,
             handover_spot=handover_spot,
+            confirm_duplicate=confirm_duplicate,
         )
+    except listing_service.DuplicateListing as e:
+        # Not an outright refusal: the app asks "is this a second item?" and the seller can say yes (confirm_duplicate).
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            {
+                "code": "possible_duplicate",
+                "message": e.message,
+                "reason": e.reason,
+                "existing": {
+                    "id": e.existing.id,
+                    "title": e.existing.title,
+                    "status": e.existing.status.value,
+                    "price": e.existing.current_price if e.existing.current_price is not None else e.existing.starting_price,
+                },
+            },
+        ) from e
     except ListingError as e:
         raise listing_http_error(e) from e
     return listing_service.listing_detail(db, listing)
@@ -118,7 +138,9 @@ def cancel(listing_id: int, user: CurrentUser, db: DbSession):
         listing = cancel_listing(db, listing_id, user.id)
     except ListingError as e:
         raise listing_http_error(e) from e
-    return listing_service.listing_detail(db, listing)
+    detail = listing_service.listing_detail(db, listing)
+    broadcaster.publish_nowait("status", {"listing_id": listing.id, "listing": detail.model_dump(mode="json")}, listing_id=listing.id)
+    return detail
 
 
 @router.post("/listings/{listing_id}/images", response_model=ListingDetail)
@@ -148,8 +170,11 @@ def remove_photo(listing_id: int, image_id: int, user: CurrentUser, db: DbSessio
 @router.get("/listings/{listing_id}/stream")
 async def stream_listing_events(listing_id: int, request: Request, db: DbSession):
     """Server-Sent Events (SSE) push stream for real-time bid updates, extensions, and price changes."""
-    listing = db.get(Listing, listing_id)
-    if listing is None:
+    exists = db.get(Listing, listing_id) is not None
+    # A stream lives as long as the page is open. Holding this session (a pooled connection) for that long let about
+    # fifteen open auction pages starve every other request, so give the connection back before streaming.
+    db.close()
+    if not exists:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Listing not found")
 
     async def event_generator():
@@ -162,7 +187,7 @@ async def stream_listing_events(listing_id: int, request: Request, db: DbSession
                     break
                 try:
                     # Wait for real-time event with 15s keep-alive timeout
-                    msg = await asyncio.wait_for(q.get(), timeout=15.0)
+                    msg = await asyncio.wait_for(q.get(), timeout=STREAM_PING_SECONDS)
                     event_type = msg.get("event", "message")
                     data_str = json.dumps(msg.get("data", {}))
                     yield f"event: {event_type}\ndata: {data_str}\n\n"

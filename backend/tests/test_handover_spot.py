@@ -18,7 +18,7 @@ def seller_h(client):
 
 def make(client, headers, **overrides):
     data = {"title": "Hero cycle", "category": "cycle", "condition": "good", "starting_price": "500",
-            "min_increment": "50", "closes_at": future(), **overrides}
+            "min_increment": "50", "closes_at": future(), "confirm_duplicate": "true", **overrides}
     return client.post("/listings", data={k: v for k, v in data.items() if v is not None}, files=[("images", ("a.png", PNG, "image/png"))], headers=headers)
 
 

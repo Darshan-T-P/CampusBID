@@ -7,6 +7,8 @@ import { useAuth } from '../auth/useAuth'
 import { Icon } from '../components/Icon'
 import { ListingCard } from '../components/ListingCard'
 import { useDebouncedField } from '../hooks/useDebouncedField'
+import { useWants } from '../hooks/useWants'
+import { wantFromFilters } from '../lib/wants'
 import { CONDITIONS, SORTS } from '../lib/format'
 import {
   DEFAULT_FILTERS,
@@ -51,6 +53,8 @@ export function Browse() {
   const filtered = hasActiveFilters(filters)
 
   const [showFilters, setShowFilters] = useState(false)
+  const { add: addWant } = useWants()
+  const alertBody = wantFromFilters(filters)
 
   const CATEGORY_TABS = [
     { value: '', label: 'All items', icon: 'grid' },
@@ -84,7 +88,7 @@ export function Browse() {
         </div>
       </section>
 
-      {/* --- How Relay Works Feature Strip --- */}
+      {/* --- How CampusBid Works Feature Strip --- */}
       <section className="how-section">
         <div className="how-card">
           <span className="how-step">01</span>
@@ -255,6 +259,17 @@ export function Browse() {
                 Clear filters
               </button>
             )}
+            {isSignedIn && alertBody && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => addWant.mutate(alertBody)}
+                disabled={addWant.isPending || addWant.isSuccess}
+                title="Get a notification when a new listing matches this search"
+              >
+                <Icon name="zap" size={15} /> {addWant.isSuccess ? 'Alert saved' : addWant.isError ? errorMessage(addWant.error) : 'Alert me'}
+              </button>
+            )}
             {isSignedIn && (
               <Link to="/sell" className="btn btn-primary btn-sm feed-sell">
                 <Icon name="tag" size={15} /> List an item
@@ -307,17 +322,43 @@ export function Browse() {
                 </>
               ) : filtered ? (
                 <>
-                  <p>No open auctions match your filters.</p>
+                  <p>No open auctions match your search yet.</p>
+                  {alertBody && isSignedIn && (
+                    <>
+                      <p className="muted small">Need it anyway? We'll notify you the moment someone lists a match, even if you're offline.</p>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => addWant.mutate(alertBody)}
+                        disabled={addWant.isPending || addWant.isSuccess}
+                      >
+                        <Icon name="zap" size={15} />{' '}
+                        {addWant.isSuccess ? "Alert saved. We'll tell you" : addWant.isError ? errorMessage(addWant.error) : 'Notify me when one is listed'}
+                      </button>
+                    </>
+                  )}
+                  {alertBody && !isSignedIn && (
+                    <p className="muted small">
+                      <Link to="/register">Create an account</Link> to be notified when one is listed.
+                    </p>
+                  )}
                   <button
                     type="button"
-                    className="btn btn-primary"
+                    className="btn btn-ghost"
                     onClick={() => setSearchParams(filtersToParams({ ...DEFAULT_FILTERS, sort: filters.sort }))}
                   >
                     Clear filters
                   </button>
                 </>
               ) : (
-                <p>No auctions are open right now. Check back soon!</p>
+                <>
+                  <p>No auctions are open right now.</p>
+                  {isSignedIn && (
+                    <p className="muted small">
+                      Looking for something specific? <Link to="/watchlist">Set an alert</Link> and we'll tell you when it's listed.
+                    </p>
+                  )}
+                </>
               )}
             </div>
           ) : (

@@ -6,6 +6,7 @@ from app.models.notification import Notification
 from app.models.password_reset import PasswordReset
 from app.models.question import ListingQuestion
 from app.models.user import User
+from app.models.want import Want
 from app.models.watch import ClosingReminder, Watch
 
 __all__ = [
@@ -22,6 +23,7 @@ __all__ = [
     "Notification",
     "PasswordReset",
     "User",
+    "Want",
     "Watch",
 ]
 

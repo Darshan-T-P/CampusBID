@@ -21,10 +21,14 @@ class SecurityMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # Read the path now: routing (a Mount) rewrites scope["root_path"] while the request is handled, so reading it
+        # later would see a different path. In production the API sits under /api; strip that so /api/media is /media.
+        path = scope.get("path", "").removeprefix(scope.get("root_path", ""))
+
         limit = settings.max_request_bytes
         declared = dict(scope["headers"]).get(b"content-length")
         if declared is not None and declared.isdigit() and int(declared) > limit:
-            await self._reject(scope, send)  # refuse before reading a single byte of the body
+            await self._reject(scope, send, path)  # refuse before reading a single byte of the body
             return
 
         received = 0
@@ -50,11 +54,11 @@ class SecurityMiddleware:
                 # Replace whatever it sends with a clear 413, once.
                 if not started:
                     started = True
-                    await self._reject(scope, send)
+                    await self._reject(scope, send, path)
                 return
             if message["type"] == "http.response.start":
                 started = True
-                message["headers"] = self._with_security_headers(scope, message.get("headers", []))
+                message["headers"] = self._with_security_headers(scope, message.get("headers", []), path)
             await send(message)
 
         try:
@@ -64,9 +68,8 @@ class SecurityMiddleware:
                 await self._reject(scope, send)
 
     @staticmethod
-    def _with_security_headers(scope: Scope, raw: list) -> list:
+    def _with_security_headers(scope: Scope, raw: list, path: str) -> list:
         existing = {k.lower() for k, _ in raw}
-        path = scope.get("path", "")
         add = {
             b"x-content-type-options": b"nosniff",  # never let a browser guess a file is HTML or script
             b"x-frame-options": b"DENY",
@@ -81,10 +84,10 @@ class SecurityMiddleware:
         return list(raw) + [(k, v) for k, v in add.items() if k not in existing]
 
     @staticmethod
-    async def _reject(scope: Scope, send: Send) -> None:
+    async def _reject(scope: Scope, send: Send, path: str) -> None:
         body = json.dumps({"detail": "Request too large"}).encode()
         headers = SecurityMiddleware._with_security_headers(
-            scope, [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]
+            scope, [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())], path
         )
         await send({"type": "http.response.start", "status": 413, "headers": headers})
         await send({"type": "http.response.body", "body": body})
