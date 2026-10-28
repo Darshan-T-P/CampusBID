@@ -13,6 +13,7 @@ one auction is set to close in about 90 seconds.
 
 import argparse
 import functools
+import re
 import shutil
 import struct
 import sys
@@ -35,6 +36,19 @@ from app.services.auction import cancel_listing, close_due_listings, place_bid  
 from app.services.listings import create_listing  # noqa: E402
 
 PASSWORD = "password123"
+PHOTO_DIR = Path(__file__).resolve().parent / "seed_photos"
+
+
+def slug(title: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+
+
+def load_photos(title: str, rgb, want_two: bool) -> list[bytes]:
+    """The drawn illustrations for this listing, or generated gradients if the files are missing."""
+    found = [f.read_bytes() for f in (PHOTO_DIR / f"{slug(title)}-{v}.png" for v in ("a", "b")) if f.exists()]
+    if not found:
+        found = [make_photo(rgb)] + ([make_photo(tuple(min(255, c + 40) for c in rgb))] if want_two else [])
+    return found if want_two else found[:1]
 
 # (key, display name). Two final-year sellers and three juniors who bid.
 USERS = [
@@ -144,8 +158,7 @@ def run_seed(db: Session, domain: str) -> dict:
     listings = {}
     for spec in LISTINGS:
         seller = users[spec["seller"]]
-        shade = tuple(min(255, c + 40) for c in spec["colour"])
-        photos = [make_photo(spec["colour"])] + ([make_photo(shade)] if spec["start"] >= 1000 else [])
+        photos = load_photos(spec["title"], spec["colour"], want_two=spec["start"] >= 1000)
         listing = create_listing(
             db, seller,
             title=spec["title"], category=Category(spec["cat"]), condition=Condition(spec["cond"]),

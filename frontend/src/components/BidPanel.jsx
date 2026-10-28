@@ -28,6 +28,8 @@ export function BidPanel({ listing, myBid }) {
   const isSeller = user != null && user.id === listing.seller.id
   const minBid = listing.min_next_bid
   const isLeading = Boolean(myBid?.is_leading)
+  const shownPrice = listing.current_price ?? listing.starting_price
+  const [firstPrice] = useState(shownPrice) // the price when the page opened: only LATER changes flash
 
   const [typed, setTyped] = useState('')
   const [touched, setTouched] = useState(false)
@@ -85,7 +87,9 @@ export function BidPanel({ listing, myBid }) {
 
       <div className="panel-price">
         <span className="price-label">{hasBids ? 'Current bid' : 'Starting price'}</span>
-        <strong className="price-big">{formatRupees(listing.current_price ?? listing.starting_price)}</strong>
+        <strong key={shownPrice} className={`price-big ${shownPrice !== firstPrice ? 'price-flash' : ''}`} aria-live="polite">
+          {formatRupees(shownPrice)}
+        </strong>
         <span className="muted small">
           {listing.bid_count} {listing.bid_count === 1 ? 'bid' : 'bids'}
           {hasBids && <> · led by {listing.leading_bidder}</>}

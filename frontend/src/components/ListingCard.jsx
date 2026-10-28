@@ -1,11 +1,16 @@
 import { Link } from 'react-router-dom'
 import { mediaUrl } from '../api/client'
 import { categoryLabel, conditionLabel, formatRupees } from '../lib/format'
+import { useNow } from '../hooks/useNow'
 import { Countdown } from './Countdown'
+import { Icon } from './Icon'
 
 /** One auction in the browse grid. `listing` is a card from GET /listings. */
 export function ListingCard({ listing }) {
   const hasBids = listing.bid_count > 0
+  const msLeft = Date.parse(listing.closes_at) - useNow()
+  const endingSoon = msLeft > 0 && msLeft < 60 * 60 * 1000
+  const hot = listing.bid_count >= 4
   return (
     <Link to={`/listings/${listing.id}`} className="listing-card">
       <div className="thumb">
@@ -22,6 +27,12 @@ export function ListingCard({ listing }) {
           </div>
         )}
         <span className="thumb-category">{categoryLabel(listing.category)}</span>
+        {(endingSoon || hot) && (
+          <span className="thumb-badges">
+            {endingSoon && <span className="thumb-badge thumb-badge-soon"><Icon name="clock" size={12} /> Ending soon</span>}
+            {hot && <span className="thumb-badge thumb-badge-hot"><Icon name="trend" size={12} /> {listing.bid_count} bids</span>}
+          </span>
+        )}
       </div>
       <div className="listing-body">
         <h3 className="listing-title">{listing.title}</h3>
