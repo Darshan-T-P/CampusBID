@@ -31,6 +31,7 @@ def create_listing(
     closes_at: Annotated[datetime, Form()],
     min_increment: Annotated[int, Form(ge=1, le=MAX_PRICE)] = 1,
     description: Annotated[str, Form(max_length=5000)] = "",
+    handover_spot: Annotated[str | None, Form(max_length=120)] = None,
     images: Annotated[list[UploadFile], File()] = [],
 ):
     enforce(f"list:user:{user.id}", limit=20, window=3600)
@@ -47,6 +48,7 @@ def create_listing(
             min_increment=min_increment,
             closes_at=closes_at,
             images=blobs,
+            handover_spot=handover_spot,
         )
     except ListingError as e:
         raise listing_http_error(e) from e

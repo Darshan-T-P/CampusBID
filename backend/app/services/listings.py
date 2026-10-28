@@ -79,6 +79,7 @@ def _clean_fields(fields: dict, now: datetime) -> dict:
             value = value.strip() if isinstance(value, str) else None
             if value and len(value) > 120:
                 raise ListingError("Handover spot must be 120 characters or less")
+            value = value or None  # clearing the field (or only spaces) means "no spot", not an empty string
         elif key in ("starting_price", "min_increment"):
             if value < 1:
                 raise ListingError("Starting price and minimum increment must be at least 1")

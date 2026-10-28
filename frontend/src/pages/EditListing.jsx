@@ -8,6 +8,7 @@ import { CATEGORIES, CONDITIONS } from '../lib/format'
 import {
   FROZEN_AFTER_BID,
   MAX_DESCRIPTION,
+  MAX_HANDOVER_SPOT,
   MAX_PHOTOS,
   MAX_TITLE,
   PHOTO_TYPES,
@@ -157,6 +158,16 @@ function EditForm({ listing }) {
           <span>Description <span className="muted">(optional)</span></span>
           <textarea rows={5} value={values.description} onChange={set('description')} maxLength={MAX_DESCRIPTION} />
           <FieldError message={errors.description} />
+        </label>
+        <label>
+          <span>Campus Handover Spot <span className="muted">(where to meet on campus)</span></span>
+          <input
+            value={values.handoverSpot}
+            onChange={set('handoverSpot')}
+            maxLength={MAX_HANDOVER_SPOT}
+            placeholder="e.g. Central Library Gate, Main Canteen…"
+          />
+          <FieldError message={errors.handoverSpot} />
         </label>
         <div className="form-row">
           <label>

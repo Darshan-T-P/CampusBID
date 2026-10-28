@@ -4,11 +4,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api, serverNow } from '../api/client'
 import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
+import { Icon } from '../components/Icon'
 import { PhotoPicker } from '../components/PhotoPicker'
 import { CATEGORIES, CONDITIONS } from '../lib/format'
 import {
+  COMMON_HANDOVER_SPOTS,
   DURATION_PRESETS,
   MAX_DESCRIPTION,
+  MAX_HANDOVER_SPOT,
   MAX_TITLE,
   parseLocalInput,
   toLocalInputValue,
@@ -20,6 +23,7 @@ const EMPTY = {
   category: '',
   condition: '',
   description: '',
+  handoverSpot: '',
   startingPrice: '',
   minIncrement: '10',
   closesAt: '',
@@ -81,6 +85,7 @@ export function Sell() {
     form.append('category', values.category)
     form.append('condition', values.condition)
     form.append('description', values.description.trim())
+    if (values.handoverSpot.trim()) form.append('handover_spot', values.handoverSpot.trim())
     form.append('starting_price', values.startingPrice.trim().replace(/,/g, ''))
     form.append('min_increment', values.minIncrement.trim().replace(/,/g, ''))
     // The picker gives local time with no zone; the server needs an absolute moment, so send UTC.
@@ -146,6 +151,36 @@ export function Sell() {
 
         <label>
           <span>
+            Campus Handover Spot <span className="muted">(where to meet)</span>
+          </span>
+          <input
+            value={values.handoverSpot}
+            onChange={set('handoverSpot')}
+            maxLength={MAX_HANDOVER_SPOT}
+            placeholder="e.g. Central Library Gate, Main Canteen, Hostel A…"
+            aria-invalid={errors.handoverSpot ? 'true' : undefined}
+            aria-describedby="err-handover"
+          />
+          <div className="presets" style={{ marginTop: '4px' }}>
+            {COMMON_HANDOVER_SPOTS.map((spot) => (
+              <button
+                key={spot}
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setValues((v) => ({ ...v, handoverSpot: spot }))}
+              >
+                <Icon name="pin" size={13} /> {spot}
+              </button>
+            ))}
+          </div>
+          <small className="muted">
+            Recommended public daytime spot on campus for buyer inspection and handover.
+          </small>
+          <FieldError id="err-handover" message={errors.handoverSpot} />
+        </label>
+
+        <label>
+          <span>
             Description <span className="muted">(optional)</span>
           </span>
           <textarea
@@ -153,7 +188,7 @@ export function Sell() {
             value={values.description}
             onChange={set('description')}
             maxLength={MAX_DESCRIPTION}
-            placeholder="Age, any wear or damage, what's included, where to collect it…"
+            placeholder="Age, any wear or damage, what's included, additional details…"
           />
           <FieldError message={errors.description} />
         </label>

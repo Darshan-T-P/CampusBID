@@ -52,12 +52,28 @@ def load_photos(title: str, rgb, want_two: bool) -> list[bytes]:
 
 # (key, display name). Two final-year sellers and three juniors who bid.
 USERS = [
-    ("arjun", "Arjun K"),
-    ("meera", "Meera S"),
-    ("priya", "Priya"),
-    ("rahul", "Rahul"),
-    ("sneha", "Sneha"),
+    ("arjun", "Arjun K", "Mechanical Engineering", 4),
+    ("meera", "Meera S", "Electronics and Communication", 4),
+    ("priya", "Priya", "Computer Science", 2),
+    ("rahul", "Rahul", "Information Technology", 3),
+    ("sneha", "Sneha", "Civil Engineering", 2),
 ]
+
+SPOTS = {
+    "Hero Sprint 21-speed cycle": "Hostel Block A, cycle stand",
+    "Casio fx-991EX calculator": "Central Library Gate",
+    "Arduino Uno starter kit": "Electronics Lab entrance",
+    "Engineering Mathematics (Kreyszig)": "Central Library Gate",
+    "Table lamp": "Hostel Block B, ground floor",
+    "Hostel bucket and mug set": "Hostel Block B, ground floor",
+    "Study table with drawer": "Hostel Block B, ground floor",
+    "Firefox mountain bike": "Main Gate parking",
+    "Data Structures notes bundle": "Main Canteen",
+    "Scientific calculator (Sharp)": "Central Library Gate",
+    "Hercules city cycle": "Main Gate parking",
+    "Organic Chemistry textbook": "Main Canteen",
+    # "Plastic chairs", "Old desk fan" and "Yoga mat" have no spot on purpose: the field is optional.
+}
 
 H, D = 1, 24  # hours, hours per day
 
@@ -149,8 +165,11 @@ def wipe(db: Session) -> None:
 def run_seed(db: Session, domain: str) -> dict:
     """Create the demo data. Returns {'users': {key: User}, 'listings': {title: Listing}}."""
     users = {}
-    for key, name in USERS:
-        user = User(email=f"{key}@{domain}", password_hash=hash_password(PASSWORD), display_name=name, is_verified=True)
+    for key, name, department, year in USERS:
+        user = User(
+            email=f"{key}@{domain}", password_hash=hash_password(PASSWORD), display_name=name,
+            department=department, year_of_study=year, is_verified=True,
+        )
         db.add(user)
         users[key] = user
     db.commit()
@@ -164,6 +183,7 @@ def run_seed(db: Session, domain: str) -> dict:
             title=spec["title"], category=Category(spec["cat"]), condition=Condition(spec["cond"]),
             description=spec["desc"], starting_price=spec["start"], min_increment=spec["inc"],
             closes_at=utcnow() + max(spec["closes"], timedelta(minutes=11)), images=photos,
+            handover_spot=SPOTS.get(spec["title"]),
         )
         if spec["closes"] < timedelta(minutes=10):
             # The app (rightly) refuses auctions shorter than 10 minutes; the demo's live-close
@@ -225,7 +245,7 @@ def main() -> None:
         run_seed(db, args.domain)
 
     print(f"\nSeeded {len(USERS)} users and {len(LISTINGS)} auctions. Sign in (password: {PASSWORD}) as:")
-    for key, name in USERS:
+    for key, name, *_ in USERS:
         role = "seller (final-year)" if key in ("arjun", "meera") else "bidder"
         print(f"  {key}@{args.domain:<14} {name:<8} {role}")
     print("\nTry: Arjun's 'My listings' (handover pending), Meera's 'My listings' (a sale awaiting her decision),")

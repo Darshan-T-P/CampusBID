@@ -127,3 +127,36 @@ describe('editing a listing', () => {
     expect(FROZEN_AFTER_BID).toHaveLength(6)
   })
 })
+
+describe('handover spot', () => {
+  const base = {
+    title: 'Hero cycle', category: 'cycle', condition: 'good', description: '', startingPrice: '500',
+    minIncrement: '50', closesAt: inHours(24), handoverSpot: '',
+  }
+  const listing = {
+    title: 'Hero cycle', category: 'cycle', condition: 'good', description: '', starting_price: 500, min_increment: 50,
+    closes_at: new Date(NOW + 5 * 3600 * 1000).toISOString(), handover_spot: 'Main Canteen',
+  }
+
+  it('is optional', () => {
+    expect(validateListing(base, [png()], NOW).handoverSpot).toBeUndefined()
+  })
+  it('is limited to 120 characters', () => {
+    expect(validateListing({ ...base, handoverSpot: 'x'.repeat(121) }, [png()], NOW).handoverSpot).toMatch(/120/)
+    expect(validateListing({ ...base, handoverSpot: 'x'.repeat(120) }, [png()], NOW).handoverSpot).toBeUndefined()
+  })
+  it('fills the edit form from the listing, with nothing as an empty box', () => {
+    expect(valuesFromListing(listing).handoverSpot).toBe('Main Canteen')
+    expect(valuesFromListing({ ...listing, handover_spot: null }).handoverSpot).toBe('')
+  })
+  it('counts a changed spot but ignores stray spaces', () => {
+    const initial = valuesFromListing(listing)
+    expect(changedFields(initial, { ...initial, handoverSpot: 'Hostel Block A' })).toEqual(['handoverSpot'])
+    expect(changedFields(initial, { ...initial, handoverSpot: '  Main Canteen ' })).toEqual([])
+  })
+  it('sends a cleared spot as null so the server stores nothing', () => {
+    const initial = valuesFromListing(listing)
+    expect(toPatch({ ...initial, handoverSpot: '   ' }, ['handoverSpot'])).toEqual({ handover_spot: null })
+    expect(toPatch({ ...initial, handoverSpot: ' Library ' }, ['handoverSpot'])).toEqual({ handover_spot: 'Library' })
+  })
+})

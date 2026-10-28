@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { api, mediaUrl } from '../api/client'
 import { errorMessage } from '../api/errors'
 import { Countdown } from '../components/Countdown'
+import { Icon } from '../components/Icon'
 import { SellerActions } from '../components/SellerActions'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatRupees } from '../lib/format'
@@ -45,6 +46,9 @@ function Row({ listing, notice, onNotice }) {
         {hasWinner && d?.leading_bidder && (
           <p className="winner-line">
             {listing.status === 'pending_approval' ? 'Winner' : 'Reserved for'}: <strong>{d.leading_bidder}</strong> at {formatRupees(d.current_price)}
+            {d?.handover_spot && (
+              <span className="row-spot-tag"> · Handover: <strong><Icon name="pin" size={13} /> {d.handover_spot}</strong></span>
+            )}
           </p>
         )}
         {!hasWinner && d?.outcome_note && <p className="muted small">{d.outcome_note}</p>}

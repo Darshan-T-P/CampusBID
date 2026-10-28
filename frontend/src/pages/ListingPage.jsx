@@ -7,6 +7,7 @@ import { useAuth } from '../auth/useAuth'
 import { AutoBidList } from '../components/AutoBidList'
 import { BidHistory } from '../components/BidHistory'
 import { BidPanel } from '../components/BidPanel'
+import { Icon } from '../components/Icon'
 import { ImageGallery } from '../components/ImageGallery'
 import { categoryLabel, conditionLabel } from '../lib/format'
 
@@ -144,7 +145,7 @@ export function ListingPage() {
 
           {listing.handover_spot && (
             <div className="handover-spot-card">
-              <div className="handover-spot-icon">📍</div>
+              <div className="handover-spot-icon"><Icon name="pin" size={22} /></div>
               <div className="handover-spot-body">
                 <strong className="handover-spot-title">Campus Handover Spot: {listing.handover_spot}</strong>
                 <p className="handover-spot-desc">

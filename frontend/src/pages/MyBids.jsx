@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, mediaUrl } from '../api/client'
 import { errorMessage } from '../api/errors'
 import { Countdown } from '../components/Countdown'
+import { Icon } from '../components/Icon'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatRupees } from '../lib/format'
 import { groupBids } from '../lib/myBids'
@@ -58,6 +59,11 @@ export function MyBids() {
                       <StatusBadge status={row.listing.status} />
                     </div>
                     <p className={`outcome outcome-${outcome.tone}`}>{outcome.text}</p>
+                    {outcome.section === 'won' && row.listing.handover_spot && ['reserved', 'pending_approval'].includes(row.listing.status) && (
+                      <p className="muted small">
+                        <Icon name="pin" size={13} /> Meet at <strong>{row.listing.handover_spot}</strong>
+                      </p>
+                    )}
                     {row.listing.status === 'active' && maxByListing.has(row.listing.id) && (
                       <p className="muted small">Automatic bidding up to {formatRupees(maxByListing.get(row.listing.id))}</p>
                     )}

@@ -71,8 +71,9 @@ def _transition(
 def approve(db: Session, listing_id: int, user_id: int, now: datetime | None = None) -> Listing:
     return _transition(
         db, listing_id, user_id, ListingStatus.pending_approval, ListingStatus.reserved,
-        lambda l: f"Approved by the seller at {l.current_price}; awaiting handover",
-        ("approved", "Sale approved", lambda l: f"The seller approved your bid of ₹{l.current_price}. Arrange the handover."), now,
+        lambda l: f"Approved by the seller at {l.current_price}; awaiting handover" + (f" at {l.handover_spot}" if l.handover_spot else ""),
+        ("approved", "Sale approved", lambda l: f"The seller approved your bid of ₹{l.current_price}. "
+            + (f"Meet at {l.handover_spot} to hand over the item." if l.handover_spot else "Arrange the handover with the seller.")), now,
     )
 
 

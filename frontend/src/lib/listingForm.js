@@ -10,6 +10,16 @@ export const MAX_DURATION_MS = 30 * 24 * 60 * 60 * 1000
 export const MAX_PRICE = 10_000_000
 export const MAX_TITLE = 120
 export const MAX_DESCRIPTION = 5000
+export const MAX_HANDOVER_SPOT = 120
+
+export const COMMON_HANDOVER_SPOTS = [
+  'Central Library Gate',
+  'Main Canteen',
+  'Hostel Block A',
+  'Mechanical Dept',
+  'Campus Main Gate',
+  'Sports Complex',
+]
 
 const HOUR = 60 * 60 * 1000
 export const DURATION_PRESETS = [
@@ -64,6 +74,9 @@ export function validateListing(values, files, nowMs) {
   if (!values.category) errors.category = 'Choose a category'
   if (!values.condition) errors.condition = 'Choose a condition'
   if (values.description.length > MAX_DESCRIPTION) errors.description = `Keep the description under ${MAX_DESCRIPTION} characters`
+  if (values.handoverSpot && values.handoverSpot.length > MAX_HANDOVER_SPOT) {
+    errors.handoverSpot = `Keep the handover spot under ${MAX_HANDOVER_SPOT} characters`
+  }
 
   const price = validatePrice(values.startingPrice, 'a starting price')
   if (price) errors.startingPrice = price
@@ -86,7 +99,7 @@ export function validateListing(values, files, nowMs) {
 /** After the first bid these can no longer change (so bidders aren't misled); the backend enforces it too. */
 export const FROZEN_AFTER_BID = ['title', 'category', 'condition', 'startingPrice', 'minIncrement', 'closesAt']
 
-const FIELD_KEYS = ['title', 'category', 'condition', 'description', 'startingPrice', 'minIncrement', 'closesAt']
+const FIELD_KEYS = ['title', 'category', 'condition', 'description', 'startingPrice', 'minIncrement', 'closesAt', 'handoverSpot']
 const API_NAME = {
   title: 'title',
   category: 'category',
@@ -95,6 +108,7 @@ const API_NAME = {
   startingPrice: 'starting_price',
   minIncrement: 'min_increment',
   closesAt: 'closes_at',
+  handoverSpot: 'handover_spot',
 }
 
 /** A listing from the API -> the form's text fields. */
@@ -104,6 +118,7 @@ export function valuesFromListing(listing) {
     category: listing.category,
     condition: listing.condition,
     description: listing.description ?? '',
+    handoverSpot: listing.handover_spot ?? '',
     startingPrice: String(listing.starting_price),
     minIncrement: String(listing.min_increment),
     closesAt: toLocalInputValue(new Date(listing.closes_at)),
@@ -112,7 +127,7 @@ export function valuesFromListing(listing) {
 
 /** Which form fields differ from how the listing was loaded. */
 export function changedFields(initial, values) {
-  const norm = (key, v) => (key === 'title' || key === 'description' || key === 'startingPrice' || key === 'minIncrement' ? v.trim() : v)
+  const norm = (key, v) => (['title', 'description', 'startingPrice', 'minIncrement', 'handoverSpot'].includes(key) ? v.trim() : v)
   return FIELD_KEYS.filter((key) => norm(key, initial[key]) !== norm(key, values[key]))
 }
 
@@ -128,6 +143,7 @@ export function toPatch(values, changed) {
   for (const key of changed) {
     let value = values[key]
     if (key === 'title' || key === 'description') value = value.trim()
+    if (key === 'handoverSpot') value = value.trim() || null // cleared = no spot, which the API reads as null
     if (key === 'startingPrice' || key === 'minIncrement') value = parseAmount(value)
     if (key === 'closesAt') value = parseLocalInput(value).toISOString()
     body[API_NAME[key]] = value

@@ -8,7 +8,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-287%20backend%20%2B%2066%20frontend-brightgreen)
+![Tests](https://img.shields.io/badge/tests-301%20backend%20%2B%2071%20frontend-brightgreen)
 
 </div>
 
@@ -29,6 +29,7 @@ public, and only verified campus students can take part.
 - **Automatic bidding.** Set a maximum and the app bids for you, only as much as needed to keep you in front, never past your limit. Maximums are public, ties go to whoever committed first, and automatic bids are marked in the history.
 - **Last-minute extensions.** A bid in the final 30 seconds moves the closing time to 60 seconds after it, so nobody wins by sniping. It applies to automatic bids too, and the page shows the countdown jump and an "Extended" marker.
 - **Fair bidding.** A bid must beat the price by the seller's minimum raise. You can't bid on your own item or against yourself. Two simultaneous bids can't both win. A late bid is impossible even if the closing job lags.
+- **Handover spot.** Sellers can name where on campus they'll meet (with one-click suggestions). It shows on the card and the auction page, can be changed even after bidding starts, and the winner is told exactly where to meet when the sale is approved.
 - **Selling.** List an item with 1-5 photos, edit it (only the description and photos once bidding starts, with a visible "Edited" marker), or cancel it.
 - **Sale workflow.** When an auction ends with a winner, the seller approves or rejects; after approval they confirm the handover or record that the winner didn't collect.
 - **Notifications.** A bell with an unread badge plus opt-in desktop pop-ups when the tab is in the background: outbid, new bid, you won, approved or rejected, cancelled.
@@ -168,8 +169,8 @@ and are per process. The database file is not encrypted at rest (use disk encryp
 ## Tests
 
 ```bash
-cd backend  && .venv/bin/python -m pytest     # 287 tests: rules, races, automatic bidding, security, auth, notifications, seed
-cd frontend && npm test                        # 66 tests: formatting, filters, forms, bid and sign-up logic
+cd backend  && .venv/bin/python -m pytest     # 301 tests: rules, races, automatic bidding, security, auth, notifications, seed
+cd frontend && npm test                        # 71 tests: formatting, filters, forms, bid and sign-up logic
 ```
 
 The concurrency tests prove the lock matters: one transaction holds the write lock while an edit or approval waits,

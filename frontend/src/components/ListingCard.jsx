@@ -51,6 +51,11 @@ export function ListingCard({ listing }) {
         </div>
         <div className="listing-meta">
           <Countdown closesAt={listing.closes_at} />
+          {listing.handover_spot && (
+            <span className="card-handover-spot" title={`Campus Handover Spot: ${listing.handover_spot}`}>
+              <Icon name="pin" size={13} /> {listing.handover_spot}
+            </span>
+          )}
         </div>
       </div>
     </Link>
