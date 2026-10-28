@@ -1,22 +1,24 @@
 """Creating and presenting listings. Bidding and closing rules live in auction.py."""
 
+import enum
 import shutil
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.clock import utcnow
 from app.core.config import settings
 from app.models import Bid, Category, Condition, Listing, ListingImage, ListingStatus, User
-from app.schemas.listing import ListingDetail, SellerPublic
+from app.schemas.listing import ListingCard, ListingDetail, ListingPage, SellerPublic
 from app.services.auction import min_valid_bid
 
 MIN_IMAGES = 1
 MAX_IMAGES = 5
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
+CLOSING_SOON = timedelta(hours=1)  # the "closing soon" filter window
 
 
 class ListingError(Exception):
@@ -128,3 +130,98 @@ def listing_detail(db: Session, listing: Listing, now: datetime | None = None) -
         created_at=listing.created_at,
         server_time=now or utcnow(),
     )
+
+
+class Sort(str, enum.Enum):
+    ending_soon = "ending_soon"
+    newest = "newest"
+    price_low = "price_low"
+    price_high = "price_high"
+
+
+def _escape_like(term: str) -> str:
+    """Make %, _ and \\ literal so a search for "50%" isn't a wildcard."""
+    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def search_listings(
+    db: Session,
+    *,
+    q: str | None = None,
+    category: Category | None = None,
+    condition: Condition | None = None,
+    min_price: int | None = None,
+    max_price: int | None = None,
+    closing_soon: bool = False,
+    status: ListingStatus = ListingStatus.active,
+    sort: Sort = Sort.ending_soon,
+    limit: int = 20,
+    offset: int = 0,
+    now: datetime | None = None,
+) -> ListingPage:
+    now = now or utcnow()
+    # The price a buyer actually faces: the leading bid, or the starting price if no bids yet.
+    price = func.coalesce(Listing.current_price, Listing.starting_price)
+
+    conditions = [Listing.status == status]
+    if status == ListingStatus.active:
+        # Filter on time too, so an expired auction the background closer hasn't reached
+        # yet never shows up as open.
+        conditions.append(Listing.closes_at > now)
+    if category is not None:
+        conditions.append(Listing.category == category)
+    if condition is not None:
+        conditions.append(Listing.condition == condition)
+    if min_price is not None:
+        conditions.append(price >= min_price)
+    if max_price is not None:
+        conditions.append(price <= max_price)
+    if closing_soon:
+        conditions.append(Listing.closes_at <= now + CLOSING_SOON)
+    for term in (q or "").split():  # every word must match the title or the description
+        pattern = f"%{_escape_like(term)}%"
+        conditions.append(
+            or_(
+                Listing.title.ilike(pattern, escape="\\"),
+                Listing.description.ilike(pattern, escape="\\"),
+            )
+        )
+
+    order_by = {
+        Sort.ending_soon: [Listing.closes_at.asc()],
+        Sort.newest: [Listing.created_at.desc()],
+        Sort.price_low: [price.asc()],
+        Sort.price_high: [price.desc()],
+    }[sort] + [Listing.id.desc() if sort == Sort.newest else Listing.id.asc()]  # stable paging
+
+    total = db.scalar(select(func.count()).select_from(Listing).where(*conditions))
+    bid_count = (
+        select(func.count()).where(Bid.listing_id == Listing.id).correlate(Listing).scalar_subquery()
+    )
+    rows = db.execute(
+        select(Listing, bid_count)
+        .where(*conditions)
+        .order_by(*order_by)
+        .limit(limit)
+        .offset(offset)
+        .options(selectinload(Listing.images), joinedload(Listing.seller))
+    ).all()
+
+    items = [
+        ListingCard(
+            id=listing.id,
+            title=listing.title,
+            category=listing.category,
+            condition=listing.condition,
+            status=listing.status,
+            starting_price=listing.starting_price,
+            current_price=listing.current_price,
+            price=listing.current_price if listing.current_price is not None else listing.starting_price,
+            bid_count=count,
+            closes_at=listing.closes_at,
+            thumbnail=f"/media/{listing.images[0].path}" if listing.images else None,
+            seller_name=listing.seller.display_name,
+        )
+        for listing, count in rows
+    ]
+    return ListingPage(items=items, total=total, limit=limit, offset=offset, server_time=now)

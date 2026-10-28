@@ -1,0 +1,102 @@
+# Manual API requests for the VS Code "REST Client" extension (humao.rest-client).
+# Start the backend first:  .venv/bin/uvicorn app.main:app --reload
+# Then click "Send Request" above any request. Requests are separated by ###.
+
+@baseUrl = http://localhost:8000
+@email = asha@campus.edu
+@password = password123
+
+### Health check (also returns server time)
+GET {{baseUrl}}/health
+
+### Register a user (409 if the email already exists - then just log in)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "display_name": "Asha"
+}
+
+### Log in. The "@name login" tag lets later requests reuse this response.
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Who am I? Uses the token from the login request above (send login first).
+GET {{baseUrl}}/me
+Authorization: Bearer {{login.response.body.access_token}}
+
+### No token -> expect 401
+GET {{baseUrl}}/me
+
+### Wrong password -> expect 401
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "not-the-password"
+}
+
+### Create a listing (login first). Needs a real image file: change ./photo.png to any
+### JPEG/PNG/WebP on your machine. {{$datetime iso8601 2 h}} = two hours from now.
+# @name createListing
+POST {{baseUrl}}/listings
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: multipart/form-data; boundary=CampusBid
+
+--CampusBid
+Content-Disposition: form-data; name="title"
+
+Hero cycle
+--CampusBid
+Content-Disposition: form-data; name="category"
+
+cycle
+--CampusBid
+Content-Disposition: form-data; name="condition"
+
+good
+--CampusBid
+Content-Disposition: form-data; name="starting_price"
+
+500
+--CampusBid
+Content-Disposition: form-data; name="min_increment"
+
+50
+--CampusBid
+Content-Disposition: form-data; name="closes_at"
+
+{{$datetime iso8601 2 h}}
+--CampusBid
+Content-Disposition: form-data; name="images"; filename="photo.png"
+Content-Type: image/png
+
+< ./photo.png
+--CampusBid--
+
+### View that listing (public, no token needed)
+GET {{baseUrl}}/listings/{{createListing.response.body.id}}
+
+### Browse: all open auctions, ending soonest first (public)
+GET {{baseUrl}}/listings
+
+### Browse with search + filters + sorting. Every word in q must appear in title/description.
+GET {{baseUrl}}/listings?q=cycle&category=cycle&condition=good&max_price=2000&sort=price_low
+
+### Only auctions closing within the hour
+GET {{baseUrl}}/listings?closing_soon=true
+
+### Pagination: second page of 10
+GET {{baseUrl}}/listings?limit=10&offset=10
+
+### Other states, e.g. unsold or cancelled listings
+GET {{baseUrl}}/listings?status=unsold

@@ -10,6 +10,31 @@ class SellerPublic(BaseModel):
     display_name: str
 
 
+class ListingCard(BaseModel):
+    """The slim version of a listing shown in browse results."""
+
+    id: int
+    title: str
+    category: Category
+    condition: Condition
+    status: ListingStatus
+    starting_price: int
+    current_price: int | None
+    price: int  # what a buyer faces now: the leading bid, or the starting price if no bids
+    bid_count: int
+    closes_at: datetime
+    thumbnail: str | None  # first photo URL
+    seller_name: str
+
+
+class ListingPage(BaseModel):
+    items: list[ListingCard]
+    total: int  # matches across all pages, so the UI can page through
+    limit: int
+    offset: int
+    server_time: datetime
+
+
 class ListingDetail(BaseModel):
     """Everything the public may see about a listing. No emails, no password data."""
 

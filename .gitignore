@@ -7,6 +7,9 @@ __pycache__/
 # Env / local data
 .env
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 backend/media/
 
 # Node
