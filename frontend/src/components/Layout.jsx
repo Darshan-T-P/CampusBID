@@ -16,6 +16,8 @@ export function Layout() {
               Browse
             </NavLink>
             <NavLink to="/sell">Sell an item</NavLink>
+            {isSignedIn && <NavLink to="/my/listings">My listings</NavLink>}
+            {isSignedIn && <NavLink to="/my/bids">My bids</NavLink>}
           </nav>
           <div className="topbar-right">
             {isSignedIn ? (

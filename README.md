@@ -20,7 +20,8 @@ The build order and the reasoning behind it are in [docs/PLAN.md](docs/PLAN.md).
 | 6. Frontend: scaffold, login/register/verify, browse with filters | done |
 | 6. Frontend: auction page with live bidding | done |
 | 6. Frontend: create listing (photos, closing-time presets) | done |
-| 6. Frontend: my listings (seller actions) / my bids, notifications UI | next |
+| 6. Frontend: my listings (seller actions) and my bids | done |
+| 6. Frontend: notification bell + pop-ups | next |
 | 7–8. Seed data, demo polish | |
 
 ## Run the backend

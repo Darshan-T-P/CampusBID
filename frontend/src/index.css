@@ -963,3 +963,153 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- my listings / my bids --- */
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.page-head h1 {
+  margin: 0;
+}
+
+.group {
+  margin-top: 28px;
+}
+
+.group h2 {
+  font-size: 1.1rem;
+  margin: 0 0 4px;
+}
+
+.rows {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: grid;
+  gap: 12px;
+}
+
+.row-card {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 14px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.row-thumb {
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--accent-soft);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.row-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.row-main {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.row-main p {
+  margin: 0;
+}
+
+.row-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  font-weight: 600;
+}
+
+.row-title a {
+  color: var(--text);
+}
+
+.winner-line {
+  font-size: 0.95rem;
+}
+
+.actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.confirm-box {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--warn-soft);
+  color: var(--warn-text);
+}
+
+.confirm-box p {
+  margin: 0;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: var(--bg);
+}
+
+.btn-danger-text {
+  color: var(--danger);
+}
+
+.outcome {
+  font-weight: 600;
+}
+
+.outcome-success {
+  color: var(--success);
+}
+
+.outcome-warn {
+  color: var(--warn-text);
+}
+
+.outcome-info {
+  color: var(--accent);
+}
+
+.outcome-muted {
+  color: var(--muted);
+}
+
+.outcome-danger {
+  color: var(--danger);
+}
+
+@media (max-width: 480px) {
+  .row-card {
+    grid-template-columns: 72px 1fr;
+  }
+}
