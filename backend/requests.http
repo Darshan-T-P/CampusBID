@@ -100,3 +100,42 @@ GET {{baseUrl}}/listings?limit=10&offset=10
 
 ### Other states, e.g. unsold or cancelled listings
 GET {{baseUrl}}/listings?status=unsold
+
+### Edit a listing (seller only, while active). Before any bid: any field.
+### After a bid: only description; price/increment/title/category/condition/closes_at return 409.
+PATCH {{baseUrl}}/listings/{{createListing.response.body.id}}
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "description": "Now with a bell and a new chain",
+  "starting_price": 600
+}
+
+### Add photos to a listing (max 5 in total)
+POST {{baseUrl}}/listings/{{createListing.response.body.id}}/images
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: multipart/form-data; boundary=CampusBid
+
+--CampusBid
+Content-Disposition: form-data; name="images"; filename="photo2.png"
+Content-Type: image/png
+
+< ./photo.png
+--CampusBid--
+
+### Remove a photo (a listing must keep at least one). Use an image id from the listing's data.
+DELETE {{baseUrl}}/listings/{{createListing.response.body.id}}/images/1
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Cancel a listing (seller only, allowed even with bids)
+POST {{baseUrl}}/listings/{{createListing.response.body.id}}/cancel
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Everything I'm selling, any status, newest first
+GET {{baseUrl}}/me/listings
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Listings I've bid on, with my best bid and whether I'm leading
+GET {{baseUrl}}/me/bids
+Authorization: Bearer {{login.response.body.access_token}}
