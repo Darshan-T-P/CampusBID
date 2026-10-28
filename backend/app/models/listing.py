@@ -58,8 +58,12 @@ class Listing(Base):
     # cannot add the constraint after the fact.
     leading_bid_id: Mapped[int | None] = mapped_column(Integer, default=None)
     outcome_note: Mapped[str | None] = mapped_column(Text, default=None)
+    # The physical spot on campus where buyer and seller meet for inspection and handover
+    handover_spot: Mapped[str | None] = mapped_column(String(120), default=None)
     # Set whenever the seller changes the listing after creating it, so bidders can see it was edited.
     edited_at: Mapped[datetime | None] = mapped_column(UTCDateTime, default=None)
+    # How many times a bid in the final seconds moved the closing time (see the extension rule in auction.py).
+    extension_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 

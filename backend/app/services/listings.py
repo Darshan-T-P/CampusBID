@@ -254,6 +254,7 @@ def listing_detail(db: Session, listing: Listing, now: datetime | None = None) -
         outcome_note=listing.outcome_note,
         handover_spot=listing.handover_spot,
         edited_at=listing.edited_at,
+        extension_count=listing.extension_count,
         images=[f"/media/{img.path}" for img in listing.images],
         image_ids=[img.id for img in listing.images],
         seller=SellerPublic(

@@ -10,6 +10,8 @@ MAX_PRICE = 10_000_000  # whole rupees; the same cap the listing rules enforce
 class SellerPublic(BaseModel):
     id: int
     display_name: str
+    department: str | None = None
+    year_of_study: int | None = None
 
 
 class ListingCard(BaseModel):
@@ -27,6 +29,7 @@ class ListingCard(BaseModel):
     closes_at: datetime
     thumbnail: str | None  # first photo URL
     seller_name: str
+    handover_spot: str | None = None
 
 
 class ListingPage(BaseModel):
@@ -55,6 +58,7 @@ class ListingUpdate(BaseModel):
     starting_price: int | None = Field(default=None, ge=1, le=MAX_PRICE)
     min_increment: int | None = Field(default=None, ge=1, le=MAX_PRICE)
     closes_at: datetime | None = None
+    handover_spot: str | None = Field(default=None, max_length=120)
 
 
 class ListingDetail(BaseModel):
@@ -75,7 +79,9 @@ class ListingDetail(BaseModel):
     bid_count: int
     leading_bidder: str | None  # display name only
     outcome_note: str | None
+    handover_spot: str | None = None  # on-campus handover location
     edited_at: datetime | None  # when the seller last changed the listing, if ever
+    extension_count: int  # times a late bid pushed the closing time back; 0 = never
     images: list[str]  # URLs under /media
     image_ids: list[int]  # the same photos' ids, in the same order (needed to remove one)
     seller: SellerPublic

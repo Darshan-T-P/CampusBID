@@ -2420,3 +2420,275 @@ h1, h2, h3, .app-hero-title, .brand-name, .price-big {
 .app-hero-title {
   text-wrap: balance; /* no single orphaned word on the last line */
 }
+
+/* --- automatic bidding --- */
+.auto-box {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+}
+
+.auto-head {
+  display: grid;
+  gap: 2px;
+}
+
+.auto-current {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.auto-actions {
+  display: inline-flex;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.auto-form {
+  display: grid;
+  gap: 6px;
+}
+
+.auto-list li {
+  grid-template-columns: 110px 1fr auto;
+}
+
+.chip-auto {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-soft-border);
+  font-weight: 600;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* --- Campus Handover Spot & Trust Styles --- */
+.card-handover-spot {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--bg-subtle);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.handover-spot-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-top: 18px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius);
+}
+
+.handover-spot-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.handover-spot-body {
+  display: grid;
+  gap: 3px;
+}
+
+.handover-spot-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #166534;
+}
+
+.handover-spot-desc {
+  font-size: 0.85rem;
+  color: #15803d;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.panel-seller-info {
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.verified-student-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.panel-spot-note {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.panel-spot-note strong {
+  color: var(--text);
+}
+
+.row-spot-tag {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+
+/* --- auth forms --- */
+.auth-card {
+  width: 100%;
+  max-width: 480px;
+  margin: 32px auto 0;
+}
+
+.form-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-field > label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.form-aside {
+  margin-top: -6px;
+}
+
+.field-notes {
+  display: grid;
+  gap: 4px;
+  min-height: 0;
+}
+
+.field-notes small {
+  font-weight: 400;
+}
+
+.input-with-action {
+  position: relative;
+}
+
+.input-with-action input {
+  padding-right: 44px;
+}
+
+.input-action {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 44px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.input-action:hover {
+  color: var(--text);
+}
+
+.strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.strength-bar {
+  flex: 0 0 90px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.strength-bar span {
+  display: block;
+  height: 100%;
+  background: var(--danger);
+  transition: width 0.2s ease;
+}
+
+.strength-2 .strength-bar span { background: var(--warn); }
+.strength-3 .strength-bar span,
+.strength-4 .strength-bar span { background: var(--success); }
+
+.match-ok {
+  color: var(--success);
+  font-weight: 600;
+}
+
+@media (max-width: 520px) {
+  .form .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* --- last-minute extension --- */
+@keyframes timeFlash {
+  0% { background: var(--warn-soft); box-shadow: 0 0 0 8px var(--warn-soft); }
+  100% { background: transparent; box-shadow: 0 0 0 8px transparent; }
+}
+
+.time-flash {
+  display: inline-block;
+  border-radius: 8px;
+  animation: timeFlash 1.8s ease-out;
+}
+
+.extended-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--warn-soft);
+  color: var(--warn-text);
+  border: 1px solid var(--warn-border);
+  font-size: 0.75rem;
+  font-weight: 700;
+}

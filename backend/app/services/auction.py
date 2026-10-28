@@ -5,7 +5,7 @@ functions. `now` is injectable so tests control the clock; production passes not
 and gets server time.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,6 +14,12 @@ from app.core.clock import utcnow
 from app.models import AutoBid, Bid, Listing, ListingStatus
 from app.services import notifications
 from app.services.errors import ListingError
+
+
+# Anti-sniping: a valid bid in the last EXTENSION_WINDOW moves the closing time to EXTENSION_TO after that bid,
+# so nobody can win by bidding a split second before the end and leaving no time to answer.
+EXTENSION_WINDOW = timedelta(seconds=30)
+EXTENSION_TO = timedelta(seconds=60)
 
 
 class BidError(Exception):
@@ -85,6 +91,20 @@ def begin_write(db: Session) -> None:
         db.connection().exec_driver_sql("BEGIN IMMEDIATE")
 
 
+def _extend_if_late(listing: Listing, now: datetime) -> None:
+    """If this bid landed in the final seconds, push the closing time to EXTENSION_TO after it.
+
+    Runs for every bid, so automatic bids extend too; several bids at the same instant (a manual bid and the
+    automatic answers it triggers) all land on the same new closing time, which counts as one extension.
+    The caller holds the write lock, so the closer can never close the auction between the bid and this.
+    """
+    if listing.closes_at - now <= EXTENSION_WINDOW:
+        new_close = now + EXTENSION_TO
+        if new_close > listing.closes_at:
+            listing.closes_at = new_close
+            listing.extension_count += 1
+
+
 def _insert_bid(db: Session, listing: Listing, bidder_id: int, amount: int, now: datetime, is_auto: bool) -> Bid:
     """Record a bid and move the listing's price and leader. The one place a bid row is ever created."""
     previous_leader = notifications.winner_id(db, listing)  # read before the lead changes
@@ -93,6 +113,7 @@ def _insert_bid(db: Session, listing: Listing, bidder_id: int, amount: int, now:
     db.flush()
     listing.current_price = amount
     listing.leading_bid_id = bid.id
+    _extend_if_late(listing, now)
     notifications.bid_placed(db, listing, bid, previous_leader)
     return bid
 

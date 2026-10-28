@@ -107,7 +107,7 @@ export function Browse() {
         <div className="how-card">
           <span className="how-step">02</span>
           <h3 className="how-title">Bid openly</h3>
-          <p className="how-desc">Every bid is public, and the server's clock alone decides when an auction ends.</p>
+          <p className="how-desc">Every bid is public. A bid in the last 30 seconds extends the timer, so no one wins by sniping.</p>
         </div>
         <div className="how-card">
           <span className="how-step">03</span>

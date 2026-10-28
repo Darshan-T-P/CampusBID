@@ -6,8 +6,10 @@ import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
 import { useNow } from '../hooks/useNow'
 import { closedMessage, parseAmount, validateBid } from '../lib/bidding'
-import { formatRupees } from '../lib/format'
+import { formatRupees, yearLabel } from '../lib/format'
+import { AutoBidBox } from './AutoBidBox'
 import { Countdown } from './Countdown'
+import { Icon } from './Icon'
 import { StatusBadge } from './StatusBadge'
 
 /**
@@ -15,8 +17,9 @@ import { StatusBadge } from './StatusBadge'
  * What it shows depends on who is looking and what state the auction is in.
  *   listing  the ListingDetail from the API
  *   myBid    this user's row from /me/bids for this listing ({ my_highest_bid, is_leading }) or undefined
+ *   myMax    this user's automatic-bidding maximum on this auction, or null
  */
-export function BidPanel({ listing, myBid }) {
+export function BidPanel({ listing, myBid, myMax = null }) {
   const { user, isSignedIn } = useAuth()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -30,6 +33,7 @@ export function BidPanel({ listing, myBid }) {
   const isLeading = Boolean(myBid?.is_leading)
   const shownPrice = listing.current_price ?? listing.starting_price
   const [firstPrice] = useState(shownPrice) // the price when the page opened: only LATER changes flash
+  const [firstClose] = useState(listing.closes_at) // likewise: only a LATER change to the closing time flashes
 
   const [typed, setTyped] = useState('')
   const [touched, setTouched] = useState(false)
@@ -79,10 +83,29 @@ export function BidPanel({ listing, myBid }) {
     <aside className="panel card" aria-label="Bidding">
       <div className="panel-top">
         <StatusBadge status={listing.status} />
-        {isOpen && <Countdown closesAt={listing.closes_at} className="panel-countdown" />}
+        {isOpen && (
+          <span key={listing.closes_at} className={listing.closes_at !== firstClose ? 'time-flash' : ''}>
+            <Countdown closesAt={listing.closes_at} className="panel-countdown" />
+          </span>
+        )}
       </div>
       {isOpen && (
-        <p className="muted small">Closes {new Date(listing.closes_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
+        <p className="muted small">
+          Closes {new Date(listing.closes_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'medium' })}
+          {listing.extension_count > 0 && (
+            <span
+              className="extended-chip"
+              title="A bid in the last 30 seconds moves the closing time to 60 seconds after that bid"
+            >
+              <Icon name="clock" size={12} /> Extended{listing.extension_count > 1 ? ` ${listing.extension_count}×` : ''}
+            </span>
+          )}
+        </p>
+      )}
+      {isOpen && listing.extension_count > 0 && (
+        <p className="warn-box small" role="status">
+          A late bid extended this auction. Bidding stays open until the countdown reaches zero.
+        </p>
       )}
 
       <div className="panel-price">
@@ -185,9 +208,24 @@ export function BidPanel({ listing, myBid }) {
         </form>
       )}
 
-      <p className="muted small panel-seller">
-        Sold by <strong>{listing.seller.display_name}</strong>
-      </p>
+      {isOpen && !timeUp && isSignedIn && !isSeller && user?.is_verified && (
+        <AutoBidBox listing={listing} myMax={myMax} leading={isLeading} />
+      )}
+
+      <div className="panel-seller-info">
+        <p className="muted small panel-seller">
+          Sold by <strong>{listing.seller.display_name}</strong>
+          {(listing.seller.department || listing.seller.year_of_study) && (
+            <span className="muted"> · {[yearLabel(listing.seller.year_of_study), listing.seller.department].filter(Boolean).join(', ')}</span>
+          )}
+          <span className="verified-student-chip" title="Verified campus student"><Icon name="shield" size={13} /> Verified</span>
+        </p>
+        {listing.handover_spot && (
+          <p className="panel-spot-note">
+            <Icon name="pin" size={14} /> Meet at <strong>{listing.handover_spot}</strong>
+          </p>
+        )}
+      </div>
     </aside>
   )
 }
