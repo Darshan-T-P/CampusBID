@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./campusbid.db"
     secret_key: str = "dev-secret-change-me-please-use-32-bytes-min"
     access_token_expire_minutes: int = 60 * 24
+    # Where uploaded listing photos are stored (served at /media).
+    media_dir: str = "media"
     # Empty = any email may register; e.g. "college.edu" restricts to that domain.
     allowed_email_domain: str = ""
 

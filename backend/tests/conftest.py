@@ -3,8 +3,17 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
 
 import app.models  # noqa: F401
+from app.core.config import settings
 from app.db.session import Base, get_db, make_engine
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def media_dir(tmp_path, monkeypatch):
+    """Send uploaded photos to a throwaway folder instead of the real media dir."""
+    path = tmp_path / "media"
+    monkeypatch.setattr(settings, "media_dir", str(path))
+    return path
 
 
 @pytest.fixture()

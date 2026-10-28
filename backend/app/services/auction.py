@@ -47,6 +47,15 @@ def close_if_due(listing: Listing, now: datetime) -> bool:
     return True
 
 
+def ensure_closed(db: Session, listing: Listing, now: datetime | None = None) -> None:
+    """Lazy close for reads: if the listing is past its time, persist the closed state.
+
+    Idempotent, so two readers racing to do it is harmless.
+    """
+    if close_if_due(listing, now or utcnow()):
+        db.commit()
+
+
 def _begin_write(db: Session) -> None:
     """Take SQLite's write lock up front (BEGIN IMMEDIATE).
 
