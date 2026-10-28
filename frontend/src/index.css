@@ -5387,3 +5387,26 @@ main:focus {
   align-items: center;
   gap: 4px;
 }
+
+/* --- Your own listings in Browse: tagged, so it's clear why there is no bookmark or bid for them --- */
+.thumb-mine {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: #1d4ed8;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+}
+
+.listing-card-mine {
+  border-color: #93c5fd;
+}

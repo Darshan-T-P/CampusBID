@@ -35,7 +35,7 @@ CLOSED_UNSOLD = (
 
 
 def _to_fast_moving_item(listing: Listing, bid_count: int) -> FastMovingItem:
-    photo = listing.images[0].path if listing.images else None
+    photo = f"/media/{listing.images[0].path}" if listing.images else None  # a ready-made URL, like every other card's thumbnail
     start = listing.starting_price
     curr = listing.current_price or start
     growth = round(((curr - start) / start) * 100, 1) if start > 0 else 0.0
@@ -157,13 +157,13 @@ def get_market_pulse(db: Session, now: datetime | None = None) -> MarketPulse:
         avg_bids = round(cat_bids / cat_total, 1) if cat_total > 0 else 0.0
 
         if rate >= 50 or avg_bids >= 2:
-            badge = "🔥 High Demand"
+            badge = "High demand"
         elif cat_bids > 0 or cat_active >= 2:
-            badge = "⚡ Active"
+            badge = "Active"
         elif cat_total > 0:
-            badge = "📦 Steady"
+            badge = "Steady"
         else:
-            badge = "🌱 Emerging"
+            badge = "Emerging"
 
         category_trends.append(
             CategoryTrend(

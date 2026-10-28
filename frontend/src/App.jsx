@@ -14,6 +14,7 @@ import { NotFound } from './pages/NotFound'
 import { Profile } from './pages/Profile'
 import { Register } from './pages/Register'
 import { Sell } from './pages/Sell'
+import { Trends } from './pages/Trends'
 import { Verify } from './pages/Verify'
 import { Watchlist } from './pages/Watchlist'
 
@@ -24,6 +25,7 @@ export default function App() {
         {/* Public: browsing needs no account. */}
         <Route index element={<Browse />} />
         <Route path="listings/:id" element={<ListingPage />} />
+        <Route path="trends" element={<Trends />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="forgot-password" element={<ForgotPassword />} />

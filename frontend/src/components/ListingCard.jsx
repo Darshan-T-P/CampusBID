@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { mediaUrl } from '../api/client'
+import { useAuth } from '../auth/useAuth'
 import { categoryLabel, conditionLabel, formatRupees } from '../lib/format'
 import { useNow } from '../hooks/useNow'
 import { Countdown } from './Countdown'
@@ -12,9 +13,11 @@ export function ListingCard({ listing }) {
   const msLeft = Date.parse(listing.closes_at) - useNow()
   const endingSoon = msLeft > 0 && msLeft < 60 * 60 * 1000
   const hot = listing.bid_count >= 4
+  const { user } = useAuth()
+  const isMine = user != null && user.id === listing.seller_id // your own auction: tagged, and you can't bid on or save it
   return (
     <div className="card-wrap">
-    <Link to={`/listings/${listing.id}`} className="listing-card">
+    <Link to={`/listings/${listing.id}`} className={`listing-card ${isMine ? 'listing-card-mine' : ''}`}>
       <div className="thumb">
         {listing.thumbnail ? (
           <img src={mediaUrl(listing.thumbnail)} alt={listing.title} loading="lazy" />
@@ -29,6 +32,11 @@ export function ListingCard({ listing }) {
           </div>
         )}
         <span className="thumb-category">{categoryLabel(listing.category)}</span>
+        {isMine && (
+          <span className="thumb-mine">
+            <Icon name="user" size={12} /> Your listing
+          </span>
+        )}
         {(endingSoon || hot) && (
           <span className="thumb-badges">
             {endingSoon && <span className="thumb-badge thumb-badge-soon"><Icon name="clock" size={12} /> Ending soon</span>}
@@ -40,7 +48,7 @@ export function ListingCard({ listing }) {
         <h3 className="listing-title">{listing.title}</h3>
         <div className="chips">
           <span className="chip">{conditionLabel(listing.condition)}</span>
-          <span className="seller-by">by {listing.seller_name}</span>
+          <span className="seller-by">by {isMine ? 'you' : listing.seller_name}</span>
         </div>
         <div className="price-row">
           <div>
