@@ -4,7 +4,7 @@ A per-item, timed auction marketplace for a campus. At the end of the semester, 
 leave cycles, calculators and books behind; instead of fastest-finger chat groups at guessed
 prices, juniors bid and the highest bid at closing wins.
 
-Stack: FastAPI + SQLite (SQLAlchemy 2) backend, React/Vite frontend (planned), email+password JWT auth.
+Stack: FastAPI + SQLite (SQLAlchemy 2) backend, React + Vite frontend (plain JavaScript), email+password JWT auth.
 
 The build order and the reasoning behind it are in [docs/PLAN.md](docs/PLAN.md).
 
@@ -17,8 +17,10 @@ The build order and the reasoning behind it are in [docs/PLAN.md](docs/PLAN.md).
 | 3. Listings, photos, browse/search, edit/cancel, my listings/bids | done |
 | 4. Auction engine, bidding, closing, sale workflow | done |
 | 5. Notifications | done |
-| 6. Frontend: scaffold, login/register/verify | done |
-| 6. Frontend: browse, auction page, selling, notifications UI | next |
+| 6. Frontend: scaffold, login/register/verify, browse with filters | done |
+| 6. Frontend: auction page with live bidding | done |
+| 6. Frontend: create listing (photos, closing-time presets) | done |
+| 6. Frontend: my listings (seller actions) / my bids, notifications UI | next |
 | 7–8. Seed data, demo polish | |
 
 ## Run the backend
@@ -48,11 +50,24 @@ There are no migrations. On startup the app adds any new columns to an existing 
 cd frontend
 npm install
 npm run dev      # http://localhost:5173 (needs the backend running on :8000)
-npm run build    # type-check + production build
+npm run build    # production build
+npm test         # unit tests (formatting, filters, URL handling)
 ```
 
 The browser calls the backend under `/api`; the Vite dev server proxies that to FastAPI
 (`VITE_API_TARGET` overrides the target, default `http://localhost:8000`).
+
+## Look at the database
+
+The data is one SQLite file, `backend/campusbid.db`.
+
+- **In VS Code:** click the file in the Explorer (the *SQLite Viewer* extension opens it as tables).
+- **Quick text overview:** `cd backend && .venv/bin/python scripts/dbpeek.py` (read-only, hides password hashes; `-n 20 listings` shows more rows).
+- **Your own queries:** `sqlite3 -header -column backend/campusbid.db "select id, title, status, current_price from listings"`.
+
+The server writes through a journal file (`campusbid.db-wal`), so a viewer that opens only the `.db` file can miss
+the newest rows. `sqlite3 backend/campusbid.db "PRAGMA wal_checkpoint(TRUNCATE)"` merges them. Don't edit the
+data by hand while the server is running.
 
 ## Design notes
 

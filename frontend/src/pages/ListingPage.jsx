@@ -1,0 +1,117 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
+import { Link, useLocation, useParams } from 'react-router-dom'
+import { ApiError, api } from '../api/client'
+import { errorMessage } from '../api/errors'
+import { useAuth } from '../auth/useAuth'
+import { BidHistory } from '../components/BidHistory'
+import { BidPanel } from '../components/BidPanel'
+import { ImageGallery } from '../components/ImageGallery'
+import { categoryLabel, conditionLabel } from '../lib/format'
+
+const LIVE_MS = 2500 // while the auction is open, so two browsers see each other's bids almost at once
+const IDLE_MS = 20_000 // once it has ended, nothing changes quickly
+
+export function ListingPage() {
+  const { id } = useParams()
+  const location = useLocation()
+  const { isSignedIn } = useAuth()
+  const queryClient = useQueryClient()
+
+  // The only thing we poll is the listing itself; everything else refreshes when it changes.
+  const listingQuery = useQuery({
+    queryKey: ['listing', id],
+    queryFn: () => api(`/listings/${id}`),
+    refetchInterval: (query) => (query.state.data?.status === 'active' ? LIVE_MS : IDLE_MS),
+    retry: (count, error) => !(error instanceof ApiError && error.status < 500) && count < 2,
+  })
+  const listing = listingQuery.data
+
+  const bidsQuery = useQuery({
+    queryKey: ['bids', id],
+    queryFn: () => api(`/listings/${id}/bids`),
+    enabled: listing !== undefined,
+  })
+
+  const isOpen = listing?.status === 'active'
+  const myBidsQuery = useQuery({
+    queryKey: ['my-bids'],
+    queryFn: () => api('/me/bids'),
+    enabled: isSignedIn && listing !== undefined,
+  })
+  const myBid = myBidsQuery.data?.find((row) => row.listing.id === Number(id))
+
+  // Someone bid (or the auction changed state): refresh the history and my standing.
+  const marker = listing ? `${listing.bid_count}:${listing.status}` : null
+  const lastMarker = useRef(null)
+  useEffect(() => {
+    if (marker !== null && lastMarker.current !== null && lastMarker.current !== marker) {
+      queryClient.invalidateQueries({ queryKey: ['bids', id] })
+      queryClient.invalidateQueries({ queryKey: ['my-bids'] })
+    }
+    lastMarker.current = marker
+  }, [marker, id, queryClient])
+
+  useEffect(() => {
+    if (listing) document.title = `${listing.title} · CampusBid`
+    return () => {
+      document.title = 'CampusBid'
+    }
+  }, [listing?.title]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (listingQuery.isPending) return <p className="muted center">Loading auction…</p>
+
+  if (listingQuery.isError) {
+    const notFound = listingQuery.error instanceof ApiError && listingQuery.error.status === 404
+    return (
+      <section className="center">
+        <h1>{notFound ? "This auction doesn't exist" : "Couldn't load this auction"}</h1>
+        {!notFound && <p className="error">{errorMessage(listingQuery.error)}</p>}
+        <p>
+          {!notFound && (
+            <button type="button" className="btn btn-ghost" onClick={() => listingQuery.refetch()}>
+              Try again
+            </button>
+          )}{' '}
+          <Link to="/">← Back to browsing</Link>
+        </p>
+      </section>
+    )
+  }
+
+  return (
+    <section>
+      {location.state?.published && (
+        <p className="success-box" role="status">
+          Your listing is live! Students can start bidding now.
+        </p>
+      )}
+      <p className="crumbs">
+        <Link to="/">← All auctions</Link>
+      </p>
+      <h1 className="listing-h1">{listing.title}</h1>
+      <div className="chips">
+        <span className="chip">{categoryLabel(listing.category)}</span>
+        <span className="chip">{conditionLabel(listing.condition)}</span>
+        {!isOpen && <span className="chip">Bidding closed</span>}
+      </div>
+
+      {/* Three areas so phones get photos -> bid panel -> description, while desktop keeps the panel beside them. */}
+      <div className="detail-grid">
+        <div className="area-gallery">
+          <ImageGallery images={listing.images} title={listing.title} />
+        </div>
+        <div className="area-panel">
+          <BidPanel listing={listing} myBid={myBid} />
+        </div>
+        <div className="area-about">
+          <h2>About this item</h2>
+          <p className="description">{listing.description || 'The seller has not added a description.'}</p>
+        </div>
+      </div>
+
+      <h2 className="history-title">Bid history {listing.bid_count > 0 && <span className="muted">({listing.bid_count})</span>}</h2>
+      {bidsQuery.isPending ? <p className="muted">Loading bids…</p> : <BidHistory bids={bidsQuery.data ?? []} />}
+    </section>
+  )
+}
