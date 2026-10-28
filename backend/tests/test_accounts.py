@@ -53,11 +53,11 @@ def test_T1_only_campus_domains_may_register(client, campus):
 
 
 def test_T1_several_domains_and_subdomains(client, monkeypatch):
-    monkeypatch.setattr(settings, "allowed_email_domains", "college.edu, mail.uni.ac.in")
+    monkeypatch.setattr(settings, "allowed_email_domains", "college.edu, mail.uni.edu")
     assert register(client, email="a@college.edu").status_code == 201
-    assert register(client, email="b@mail.uni.ac.in").status_code == 201
+    assert register(client, email="b@mail.uni.edu").status_code == 201
     assert register(client, email="c@cs.college.edu").status_code == 201  # a real subdomain
-    assert register(client, email="d@uni.ac.in").status_code == 422  # only mail.uni.ac.in was listed
+    assert register(client, email="d@uni.edu").status_code == 422  # only mail.uni.edu was listed
 
 
 def test_T1_app_refuses_to_start_without_domains_unless_dev_mode(monkeypatch):
@@ -254,3 +254,57 @@ def test_T7_token_of_a_deleted_user_stops_working(client, db_session):
     db_session.delete(db_session.query(User).one())
     db_session.commit()
     assert client.get("/me", headers=headers).status_code == 401
+
+
+# --- only institutional (.edu) addresses ------------------------------------
+
+
+@pytest.mark.parametrize("email", ["a@gmail.com", "a@college.ac.in", "a@edu.com", "a@college.edu.com", "a@campus.education"])
+def test_only_dot_edu_addresses_may_register(client, email):
+    r = register(client, email=email)
+    assert r.status_code == 422 and ".edu" in r.json()["detail"]
+
+
+def test_dot_edu_subdomains_are_fine(client):
+    assert register(client, email="a@cs.kongu.edu").status_code == 201
+
+
+def test_the_suffix_rule_can_be_turned_off(client, monkeypatch):
+    monkeypatch.setattr(settings, "required_email_suffix", "")
+    assert register(client, email="a@college.ac.in").status_code == 201
+
+
+# --- year and department ----------------------------------------------------
+
+
+def test_year_and_department_are_stored_and_returned_on_the_profile(client):
+    r = client.post("/auth/register", json={
+        "email": "ann@campus.edu", "password": "password123", "display_name": "Ann",
+        "department": "  Computer Science ", "year_of_study": 3,
+    })
+    assert r.status_code == 201
+    me = client.get("/me", headers={"Authorization": f"Bearer {r.json()['access_token']}"}).json()
+    assert me["department"] == "Computer Science" and me["year_of_study"] == 3
+
+
+def test_year_and_department_are_optional_for_the_api(client):
+    r = register(client)
+    me = client.get("/me", headers={"Authorization": f"Bearer {r.json()['access_token']}"}).json()
+    assert me["department"] is None and me["year_of_study"] is None
+
+
+@pytest.mark.parametrize("bad", [{"year_of_study": 0}, {"year_of_study": 7}, {"year_of_study": "second"}, {"department": "x" * 81}])
+def test_bad_year_or_department_is_rejected(client, bad):
+    body = {"email": "ann@campus.edu", "password": "password123", "display_name": "Ann", **bad}
+    assert client.post("/auth/register", json=body).status_code == 422
+
+
+def test_a_listings_seller_shows_department_and_year_but_never_an_email(client):
+    r = client.post("/auth/register", json={
+        "email": "sam@campus.edu", "password": "password123", "display_name": "Sam",
+        "department": "Mechanical", "year_of_study": 4,
+    })
+    headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
+    listing = create(client, headers).json()
+    assert listing["seller"] == {"id": 1, "display_name": "Sam", "department": "Mechanical", "year_of_study": 4}
+    assert "@" not in client.get(f"/listings/{listing['id']}").text

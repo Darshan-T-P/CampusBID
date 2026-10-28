@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     # Comma-separated campus domains, e.g. "college.edu,mail.college.edu". Subdomains match too.
     # Required unless dev_mode is on (the app refuses to start without it).
     allowed_email_domains: str = ""
+    # Every registering email must end with this (institutional addresses). Empty disables the check.
+    required_email_suffix: str = ".edu"
     # Demo/dev switch: relaxes the domain requirement and prints verification codes to the log.
     dev_mode: bool = False
     # Skip the email step and mark new accounts verified (demos, local testing).

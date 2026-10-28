@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
+import { PasswordField } from '../components/PasswordField'
 
 export function Login() {
   const { login, isSignedIn } = useAuth()
@@ -33,20 +34,17 @@ export function Login() {
     <div className="card auth-card">
       <h1>Sign in</h1>
       <form onSubmit={onSubmit} className="form">
-        <label>
-          Campus email
-          <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
+        <div className="form-field">
+          <label htmlFor="login-email">Campus email</label>
+          <input id="login-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <PasswordField
+          id="login-password"
+          label="Password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
         {error && (
           <p className="error" role="alert">
             {error}

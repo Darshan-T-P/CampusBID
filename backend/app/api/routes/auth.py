@@ -48,6 +48,8 @@ def register(body: RegisterRequest, request: Request, db: DbSession):
         email=email,
         password_hash=hash_password(body.password),
         display_name=body.display_name.strip(),
+        department=(body.department or "").strip() or None,
+        year_of_study=body.year_of_study,
         is_verified=settings.auto_verify,
     )
     db.add(user)

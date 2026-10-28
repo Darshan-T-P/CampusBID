@@ -43,10 +43,10 @@ export function AuthProvider({ children }) {
   )
 
   const register = useCallback(
-    async (email, displayName, password) => {
+    async (email, displayName, password, profile = {}) => {
       const result = await api('/auth/register', {
         method: 'POST',
-        body: { email, display_name: displayName, password },
+        body: { email, display_name: displayName, password, ...profile },
       })
       applyToken(result.access_token)
       return result

@@ -50,7 +50,8 @@ def test_running_it_twice_changes_nothing(old_db):
 
 def test_reports_what_it_added(old_db):
     Base.metadata.create_all(old_db)  # creates the other tables, leaves users as it is
-    assert add_missing_columns(old_db) == ["users.is_verified"]
+    # the old table lacks every column added since: all of them are found and added in one pass
+    assert set(add_missing_columns(old_db)) == {"users.is_verified", "users.department", "users.year_of_study"}
 
 
 def test_fresh_database_needs_no_upgrade(tmp_path):
