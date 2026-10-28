@@ -1,0 +1,96 @@
+"""The sale workflow: what happens after an auction closes with a winning bid.
+
+    pending_approval --approve--> reserved --handover--> completed
+          |                           `--pickup_failed--> failed_pickup
+          `--reject--> rejected
+
+Every step is a compare-and-swap on the expected current status, taken under the write lock,
+so double-clicks, two open tabs and racing approve/reject calls can never apply twice.
+"""
+
+from collections.abc import Callable
+from datetime import datetime
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.core.clock import utcnow
+from app.models import Listing, ListingStatus
+from app.services.auction import begin_write, close_if_due
+from app.services.errors import ListingError
+
+_ALREADY = {
+    ListingStatus.pending_approval: "is still waiting for the seller's decision",
+    ListingStatus.reserved: "is already approved",
+    ListingStatus.completed: "is already completed",
+    ListingStatus.failed_pickup: "already ended with a failed pickup",
+    ListingStatus.rejected: "was already rejected",
+    ListingStatus.unsold: "closed with no bids",
+    ListingStatus.cancelled: "was cancelled",
+    ListingStatus.active: "is still open for bidding",
+}
+
+
+def _transition(
+    db: Session,
+    listing_id: int,
+    user_id: int,
+    expected: ListingStatus,
+    new: ListingStatus,
+    note: Callable[[Listing], str],
+    now: datetime | None = None,
+) -> Listing:
+    """`note` builds the public outcome text from the listing as it stands."""
+    now = now or utcnow()
+    begin_write(db)
+    try:
+        listing = db.scalars(
+            select(Listing).where(Listing.id == listing_id).execution_options(populate_existing=True)
+        ).one_or_none()
+        if listing is None:
+            raise ListingError("Listing not found", "not_found")
+        if listing.seller_id != user_id:
+            raise ListingError("Only the seller can do that", "forbidden")
+        close_if_due(listing, now)  # an expired-but-unswept auction becomes pending_approval first
+        if listing.status != expected:
+            raise ListingError(f"This listing {_ALREADY[listing.status]}", "conflict")
+        listing.status = new
+        listing.outcome_note = note(listing)
+        db.commit()
+        return listing
+    except BaseException:
+        db.rollback()
+        raise
+
+
+def approve(db: Session, listing_id: int, user_id: int, now: datetime | None = None) -> Listing:
+    return _transition(
+        db, listing_id, user_id, ListingStatus.pending_approval, ListingStatus.reserved,
+        lambda l: f"Approved by the seller at {l.current_price}; awaiting handover", now,
+    )
+
+
+def reject(
+    db: Session, listing_id: int, user_id: int, reason: str | None = None, now: datetime | None = None
+) -> Listing:
+    note = "Rejected by the seller"
+    if reason and reason.strip():
+        note += f": {reason.strip()}"
+    return _transition(
+        db, listing_id, user_id, ListingStatus.pending_approval, ListingStatus.rejected,
+        lambda _l: note, now,
+    )
+
+
+def confirm_handover(db: Session, listing_id: int, user_id: int, now: datetime | None = None) -> Listing:
+    return _transition(
+        db, listing_id, user_id, ListingStatus.reserved, ListingStatus.completed,
+        lambda l: f"Handed over; sale completed at {l.current_price}", now,
+    )
+
+
+def pickup_failed(db: Session, listing_id: int, user_id: int, now: datetime | None = None) -> Listing:
+    return _transition(
+        db, listing_id, user_id, ListingStatus.reserved, ListingStatus.failed_pickup,
+        lambda _l: "The winner did not collect the item", now,
+    )

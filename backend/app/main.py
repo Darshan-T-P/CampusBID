@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import auth, bids, listings, me
+from app.api.routes import auth, bids, listings, me, sale
 from app.core.clock import utcnow
 from app.core.config import settings
 from app.db.session import SessionLocal, init_db
@@ -50,6 +50,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(listings.router)
 app.include_router(bids.router)
+app.include_router(sale.router)
 app.include_router(me.router)
 # Uploaded photos. check_dir=False because the folder is created at startup, not import time.
 app.mount("/media", StaticFiles(directory=settings.media_dir, check_dir=False), name="media")

@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 
 from app.api.deps import CurrentUser, DbSession, VerifiedUser
+from app.api.errors import listing_http_error
 from app.models import Category, Condition, Listing, ListingStatus
 from app.schemas.listing import ListingDetail, ListingPage, ListingUpdate
 from app.services import listings as listing_service
@@ -12,18 +13,6 @@ from app.services.errors import ListingError
 from app.services.listings import MAX_IMAGE_BYTES, Sort
 
 router = APIRouter(tags=["listings"])
-
-_HTTP_STATUS = {
-    "invalid": status.HTTP_422_UNPROCESSABLE_CONTENT,
-    "not_found": status.HTTP_404_NOT_FOUND,
-    "forbidden": status.HTTP_403_FORBIDDEN,
-    "conflict": status.HTTP_409_CONFLICT,
-}
-
-
-def _http_error(e: ListingError) -> HTTPException:
-    return HTTPException(_HTTP_STATUS[e.code], e.message)
-
 
 def _read_uploads(files: list[UploadFile]) -> list[bytes]:
     # Read at most one byte past the limit: enough to detect "too big" without loading a huge upload.
@@ -58,7 +47,7 @@ def create_listing(
             images=blobs,
         )
     except ListingError as e:
-        raise _http_error(e) from e
+        raise listing_http_error(e) from e
     return listing_service.listing_detail(db, listing)
 
 
@@ -111,7 +100,7 @@ def edit_listing(listing_id: int, body: ListingUpdate, user: CurrentUser, db: Db
     try:
         listing = listing_service.update_listing(db, listing_id, user.id, changes)
     except ListingError as e:
-        raise _http_error(e) from e
+        raise listing_http_error(e) from e
     return listing_service.listing_detail(db, listing)
 
 
@@ -120,7 +109,7 @@ def cancel(listing_id: int, user: CurrentUser, db: DbSession):
     try:
         listing = cancel_listing(db, listing_id, user.id)
     except ListingError as e:
-        raise _http_error(e) from e
+        raise listing_http_error(e) from e
     return listing_service.listing_detail(db, listing)
 
 
@@ -134,7 +123,7 @@ def add_photos(
     try:
         listing = listing_service.add_images(db, listing_id, user.id, _read_uploads(images))
     except ListingError as e:
-        raise _http_error(e) from e
+        raise listing_http_error(e) from e
     return listing_service.listing_detail(db, listing)
 
 
@@ -143,5 +132,5 @@ def remove_photo(listing_id: int, image_id: int, user: CurrentUser, db: DbSessio
     try:
         listing = listing_service.remove_image(db, listing_id, user.id, image_id)
     except ListingError as e:
-        raise _http_error(e) from e
+        raise listing_http_error(e) from e
     return listing_service.listing_detail(db, listing)

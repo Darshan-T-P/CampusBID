@@ -15,7 +15,7 @@ The build order and the reasoning behind it are in [docs/PLAN.md](docs/PLAN.md).
 | 1. Backend skeleton (config, DB, models, health) | done |
 | 2. Auth (register / login / `/me`) | done |
 | 3. Listings, photos, browse/search, edit/cancel, my listings/bids | done |
-| 4. Auction engine, bidding, closing, sale workflow | engine + tests done; bid route, closer, sale workflow next |
+| 4. Auction engine, bidding, closing, sale workflow | engine, bid API and background closer done; sale workflow next |
 | 5. Notifications | |
 | 6–8. Frontend, seed data, demo polish | |
 
@@ -29,6 +29,14 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ```
 
 Configuration is via environment variables or `backend/.env` (see `backend/.env.example`).
+
+**Campus-only accounts.** Set `ALLOWED_EMAIL_DOMAINS` (comma-separated, subdomains match). The app
+refuses to start without it unless `DEV_MODE=true`. New users must verify their campus email with a
+6-digit code before they can list or bid; unverified users can browse. For local demos set
+`DEV_MODE=true` (codes are printed to the server log) and `AUTO_VERIFY=true` (skip the code step).
+No email transport is wired up yet, so a real deployment still needs one.
+
+If you change the models, delete the local `backend/campusbid.db*` files: there are no migrations.
 
 ## Design notes
 
