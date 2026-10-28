@@ -30,7 +30,7 @@ export function Layout() {
       <header className="topbar">
         <div className="container topbar-inner">
           <Link to="/" className="brand">
-            <span className="brand-name">Campus<span className="brand-accent">Bid</span></span>
+            <span className="brand-name">Re<span className="brand-accent">lay</span></span>
           </Link>
           <nav className="nav">
             <NavLink to="/" end>

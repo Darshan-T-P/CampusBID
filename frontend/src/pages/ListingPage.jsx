@@ -8,6 +8,7 @@ import { AutoBidList } from '../components/AutoBidList'
 import { BidHistory } from '../components/BidHistory'
 import { BidPanel } from '../components/BidPanel'
 import { ContactCard } from '../components/ContactCard'
+import { APP_NAME } from '../lib/brand'
 import { ListingQA } from '../components/ListingQA'
 import { WatchButton } from '../components/WatchButton'
 import { Icon } from '../components/Icon'
@@ -99,9 +100,9 @@ export function ListingPage() {
   }, [marker, id, queryClient])
 
   useEffect(() => {
-    if (listing) document.title = `${listing.title} · CampusBid`
+    if (listing) document.title = `${listing.title} · ${APP_NAME}`
     return () => {
-      document.title = 'CampusBid'
+      document.title = APP_NAME
     }
   }, [listing?.title]) // eslint-disable-line react-hooks/exhaustive-deps
 

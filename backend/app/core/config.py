@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     smtp_starttls: bool = True  # upgrade a plain connection to TLS (port 587)
     smtp_ssl: bool = False  # TLS from the first byte (port 465); turn starttls off if you use this
     smtp_timeout: int = 15
+    app_name: str = "Relay"  # the product name users see ("CampusBid" is only the repository and code name)
     email_from: str = "Relay <no-reply@localhost>"
     password_reset_code_ttl_minutes: int = 15
     # Where the web app lives, for the links inside emails (e.g. https://relay.example.edu).

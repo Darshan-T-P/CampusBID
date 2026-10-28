@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { api } from '../api/client'
 import { errorMessage } from '../api/errors'
 import { parseAmount, parseRaise } from '../lib/bidding'
+import { APP_NAME } from '../lib/brand'
 import { formatRupees } from '../lib/format'
 
 /**
@@ -93,7 +94,7 @@ export function AutoBidBox({ listing, myMax, myStep = null, leading }) {
       <div className="auto-head">
         <strong>Automatic Bidding</strong>
         <span className="muted small">
-          Set your maximum limit and CampusBid bids for you automatically to keep you in the lead. Each automatic bid raises the price
+          Set your maximum limit and {APP_NAME} bids for you automatically to keep you in the lead. Each automatic bid raises the price
           by the auction's minimum raise ({formatRupees(minRaise)}) unless you choose a bigger raise. Limits are public.
         </span>
       </div>

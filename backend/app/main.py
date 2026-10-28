@@ -57,7 +57,7 @@ async def lifespan(_app: FastAPI):
 
 # The interactive docs/schema are for development; a deployed server shouldn't advertise its whole API surface.
 _docs = {} if settings.dev_mode else {"docs_url": None, "redoc_url": None, "openapi_url": None}
-app = FastAPI(title="CampusBid", version="0.1.0", lifespan=lifespan, **_docs)
+app = FastAPI(title=f"{settings.app_name} API", version="0.1.0", lifespan=lifespan, **_docs)
 app.add_middleware(SecurityMiddleware)
 
 # Vite dev server; in production the built frontend is served from the same origin.

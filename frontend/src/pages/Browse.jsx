@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { api } from '../api/client'
+import { api, mediaUrl } from '../api/client'
 import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
 import { Icon } from '../components/Icon'
@@ -9,7 +9,7 @@ import { ListingCard } from '../components/ListingCard'
 import { useDebouncedField } from '../hooks/useDebouncedField'
 import { useWants } from '../hooks/useWants'
 import { wantFromFilters } from '../lib/wants'
-import { CONDITIONS, SORTS } from '../lib/format'
+import { CONDITIONS, SORTS, categoryLabel, formatRupees } from '../lib/format'
 import {
   DEFAULT_FILTERS,
   PAGE_SIZE,
@@ -54,6 +54,14 @@ export function Browse() {
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1
   const filtered = hasActiveFilters(filters)
 
+  const marketPulseQuery = useQuery({
+    queryKey: ['market-pulse'],
+    queryFn: () => api('/analytics/market-pulse'),
+    staleTime: 45_000,
+  })
+  const pulse = marketPulseQuery.data
+  const fastMovingItems = pulse?.fast_moving?.filter((item) => item.bid_count > 0 || item.is_hot).slice(0, 4) || []
+
   const [showFilters, setShowFilters] = useState(false)
   const { add: addWant } = useWants()
   const alertBody = wantFromFilters(filters)
@@ -90,7 +98,7 @@ export function Browse() {
         </div>
       </section>
 
-      {/* --- How CampusBid Works Feature Strip --- */}
+      {/* --- How Relay Works Feature Strip --- */}
       <section className="how-section">
         <div className="how-card">
           <span className="how-step">01</span>
@@ -113,6 +121,54 @@ export function Browse() {
 
       {/* --- Main Application Auction Feed --- */}
       <section id="auctions-feed" className="feed-section">
+        {/* Fast-Moving & High-Interest Spotlight Shelf */}
+        {fastMovingItems.length > 0 && !filtered && (
+          <div className="spotlight-strip">
+            <div className="spotlight-header">
+              <div className="spotlight-title-group">
+                <span className="spotlight-fire" aria-hidden="true">
+                  <Icon name="trend" size={20} />
+                </span>
+                <h3 className="spotlight-title">Fast-Moving & High-Interest Now</h3>
+                <span className="spotlight-badge">Live Bidding</span>
+              </div>
+              <Link to="/trends" className="spotlight-more-link">
+                Market Analytics & Demand Radar →
+              </Link>
+            </div>
+            <div className="spotlight-grid">
+              {fastMovingItems.map((item) => (
+                <Link to={`/listings/${item.id}`} key={item.id} className="spotlight-card">
+                  <div className="spotlight-img-wrap">
+                    {item.photo ? (
+                      <img src={mediaUrl(item.photo)} alt="" loading="lazy" />
+                    ) : (
+                      <div className="spotlight-no-img">
+                        <Icon name="package" size={24} />
+                      </div>
+                    )}
+                    <span className="spotlight-bids-badge">
+                      <Icon name="gavel" size={12} /> {item.bid_count} {item.bid_count === 1 ? 'bid' : 'bids'}
+                    </span>
+                  </div>
+                  <div className="spotlight-info">
+                    <span className="spotlight-category">{categoryLabel(item.category)}</span>
+                    <h4 className="spotlight-name">{item.title}</h4>
+                    <div className="spotlight-price-row">
+                      <span className="spotlight-price">
+                        {formatRupees(item.current_price || item.starting_price)}
+                      </span>
+                      {item.price_growth_pct > 0 && (
+                        <span className="growth-badge small">+{item.price_growth_pct}%</span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Category Tabs Bar */}
         <div className="category-tabs-bar" role="tablist" aria-label="Browse categories">
           {CATEGORY_TABS.map((tab) => {

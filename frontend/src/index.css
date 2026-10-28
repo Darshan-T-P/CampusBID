@@ -1,4 +1,4 @@
-/* CampusBid — Modern, clean, and bright design system. */
+/* Relay: modern, clean, and bright design system. */
 :root {
   /* Color Palette: Bright, airy, and professional */
   --bg: #f8fafc;
@@ -4689,17 +4689,19 @@ main:focus {
 .spotlight-title-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .spotlight-fire {
-  font-size: 1.25rem;
-  animation: pulse-fire 2s infinite ease-in-out;
-}
-
-@keyframes pulse-fire {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #dbeafe;
+  color: var(--accent);
 }
 
 .spotlight-title {
@@ -4742,6 +4744,8 @@ main:focus {
 
 .spotlight-card {
   display: flex;
+  align-items: stretch;
+  min-height: 92px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -4760,9 +4764,9 @@ main:focus {
 
 .spotlight-img-wrap {
   position: relative;
-  width: 84px;
-  min-width: 84px;
-  height: 84px;
+  width: 92px;
+  min-width: 92px;
+  align-self: stretch;
   background: var(--bg-subtle);
   overflow: hidden;
 }
@@ -4938,6 +4942,9 @@ main:focus {
 }
 
 .trends-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 1.35rem;
   font-weight: 700;
   margin: 0 0 4px;
@@ -5365,4 +5372,18 @@ main:focus {
   gap: 6px;
   margin: 8px 0 0;
   padding-left: 18px;
+}
+
+/* Line icons (no emoji) inside the trend titles and tags */
+.fire-icon {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.hot-tag,
+.unfilled-tag,
+.matched-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
