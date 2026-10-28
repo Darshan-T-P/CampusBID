@@ -56,3 +56,14 @@ export function urgencyOf(ms) {
   if (ms < 60 * 60 * 1000) return 'soon'
   return 'normal'
 }
+
+/** "just now", "5m ago", "3h ago", "2d ago" for a past ISO time, measured against `nowMs`. */
+export function timeAgo(iso, nowMs) {
+  const seconds = Math.floor((nowMs - Date.parse(iso)) / 1000)
+  if (seconds < 45) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${Math.max(1, minutes)}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}

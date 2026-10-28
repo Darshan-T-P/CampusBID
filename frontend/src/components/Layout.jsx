@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { NotificationBell } from './NotificationBell'
 
 export function Layout() {
   const { user, isSignedIn, logout } = useAuth()
@@ -22,6 +23,7 @@ export function Layout() {
           <div className="topbar-right">
             {isSignedIn ? (
               <>
+                <NotificationBell />
                 {user && <span className="who">{user.display_name}</span>}
                 <button className="btn btn-ghost" onClick={logout}>
                   Sign out

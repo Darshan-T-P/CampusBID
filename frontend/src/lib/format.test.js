@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { categoryLabel, conditionLabel, formatRemaining, formatRupees, urgencyOf } from './format'
+import { categoryLabel, conditionLabel, formatRemaining, formatRupees, timeAgo, urgencyOf } from './format'
 
 const SEC = 1000
 const MIN = 60 * SEC
@@ -44,5 +44,20 @@ describe('labels', () => {
     expect(categoryLabel('cycle')).toBe('Cycles')
     expect(conditionLabel('like_new')).toBe('Like new')
     expect(categoryLabel('mystery')).toBe('mystery')
+  })
+})
+
+describe('timeAgo', () => {
+  const now = Date.parse('2026-05-01T12:00:00Z')
+  const ago = (ms) => new Date(now - ms).toISOString()
+  it('reads naturally at each scale', () => {
+    expect(timeAgo(ago(10 * SEC), now)).toBe('just now')
+    expect(timeAgo(ago(50 * SEC), now)).toBe('1m ago')
+    expect(timeAgo(ago(5 * MIN), now)).toBe('5m ago')
+    expect(timeAgo(ago(3 * HOUR), now)).toBe('3h ago')
+    expect(timeAgo(ago(2 * DAY), now)).toBe('2d ago')
+  })
+  it('treats a time slightly in the future (clock skew) as just now', () => {
+    expect(timeAgo(ago(-5000), now)).toBe('just now')
   })
 })
