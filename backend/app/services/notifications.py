@@ -136,16 +136,18 @@ def unread_count(db: Session, user_id: int) -> int:
 
 
 def list_for_user(
-    db: Session, user_id: int, since_id: int | None, unread_only: bool, limit: int
+    db: Session, user_id: int, since_id: int | None, unread_only: bool, limit: int, before_id: int | None = None
 ) -> list[Notification]:
     """With `since_id`: a cursor feed, oldest first, so a poller can safely advance its cursor.
-    Without it: a history view, newest first."""
+    Without it: a history view, newest first; `before_id` continues it with older items."""
     query = select(Notification).where(Notification.user_id == user_id)
     if unread_only:
         query = query.where(Notification.read_at.is_(None))
     if since_id is not None:
         query = query.where(Notification.id > since_id).order_by(Notification.id.asc())
     else:
+        if before_id is not None:
+            query = query.where(Notification.id < before_id)
         query = query.order_by(Notification.id.desc())
     return list(db.scalars(query.limit(limit)).all())
 

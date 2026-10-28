@@ -6,6 +6,7 @@ import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
 import { Icon } from './Icon'
 import { yearLabel } from '../lib/format'
+import { findSimilarQuestion } from '../lib/questionSimilarity'
 
 export function ListingQA({ listing }) {
   const { user, isSignedIn } = useAuth()
@@ -52,6 +53,21 @@ export function ListingQA({ listing }) {
       setReplyErrors((prev) => ({ ...prev, [variables.questionId]: errorMessage(err) }))
     },
   })
+
+  // Seller tools: hide spam from everyone else, pin a helpful answer to the top.
+  const moderate = useMutation({
+    mutationFn: ({ questionId, action, value }) =>
+      api(`/listings/${listingId}/questions/${questionId}/${action}`, { method: 'POST', body: action === 'hide' ? { hidden: value } : { pinned: value } }),
+    onSuccess: () => {
+      setModerationError(null)
+      queryClient.invalidateQueries({ queryKey: ['questions', listingId] })
+    },
+    onError: (err) => setModerationError(errorMessage(err)),
+  })
+  const [moderationError, setModerationError] = useState(null)
+
+  // "Someone already asked something like this", shown while typing (never blocks asking).
+  const similar = questionText.trim().length >= 12 ? findSimilarQuestion(questionText, questions) : null
 
   function handleAsk(e) {
     e.preventDefault()
@@ -121,6 +137,13 @@ export function ListingQA({ listing }) {
                     {askMutation.isPending ? 'Posting…' : 'Ask Question'}
                   </button>
                 </div>
+                {similar && (
+                  <div className="similar-hint" role="status">
+                    <strong>Someone already asked something like this:</strong>
+                    <span>“{similar.question_text}”</span>
+                    <span className="muted small">{similar.answer_text ? `Seller's answer: ${similar.answer_text}` : 'Waiting for the seller to reply, so no need to ask again.'}</span>
+                  </div>
+                )}
                 {askError && (
                   <div className="error-box" role="alert">
                     <Icon name="x" size={14} /> {askError}
@@ -146,6 +169,12 @@ export function ListingQA({ listing }) {
         </div>
       )}
 
+      {moderationError && (
+        <p className="error small" role="alert">
+          {moderationError}
+        </p>
+      )}
+
       {/* Questions Thread */}
       {isPending ? (
         <p className="muted">Loading questions…</p>
@@ -167,7 +196,13 @@ export function ListingQA({ listing }) {
             const err = replyErrors[q.id]
 
             return (
-              <div key={q.id} className="qa-card">
+              <div key={q.id} className={`qa-card ${q.hidden ? 'qa-card-hidden' : ''} ${q.pinned ? 'qa-card-pinned' : ''}`}>
+                {(q.pinned || q.hidden) && (
+                  <div className="qa-flags">
+                    {q.pinned && <span className="qa-flag qa-flag-pinned"><Icon name="bookmark" size={12} filled /> Pinned by the seller</span>}
+                    {q.hidden && <span className="qa-flag qa-flag-hidden"><Icon name="eyeOff" size={12} /> Hidden from other students</span>}
+                  </div>
+                )}
                 {/* Asker & Question */}
                 <div className="qa-question-block">
                   <div className="qa-user-row">
@@ -186,6 +221,19 @@ export function ListingQA({ listing }) {
                   </div>
                   <p className="qa-question-text">{q.question_text}</p>
                 </div>
+
+                {isSeller && (
+                  <div className="qa-moderation">
+                    {q.answer_text && !q.hidden && (
+                      <button type="button" className="btn btn-ghost btn-sm" disabled={moderate.isPending} onClick={() => moderate.mutate({ questionId: q.id, action: 'pin', value: !q.pinned })}>
+                        {q.pinned ? 'Unpin' : 'Pin to top'}
+                      </button>
+                    )}
+                    <button type="button" className="btn btn-ghost btn-sm" disabled={moderate.isPending} onClick={() => moderate.mutate({ questionId: q.id, action: 'hide', value: !q.hidden })}>
+                      {q.hidden ? 'Show again' : 'Hide as spam'}
+                    </button>
+                  </div>
+                )}
 
                 {/* Seller Answer */}
                 {q.answer_text ? (

@@ -38,6 +38,10 @@ def check_startup_settings() -> None:
 async def lifespan(_app: FastAPI):
     check_startup_settings()
     init_db()
+    with SessionLocal() as db:
+        from app.services.listings import backfill_image_fingerprints
+
+        backfill_image_fingerprints(db)  # photos from before duplicate detection get their fingerprint
     Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
     closer = None
     if settings.closer_interval_seconds > 0:
@@ -77,6 +81,12 @@ app.include_router(questions.router)
 class CachedStaticFiles(StaticFiles):
     """Static file handler with aggressive, permanent caching for immutable media assets."""
 
+    async def check_config(self) -> None:
+        """Ensure media directory exists before Starlette verifies it, even in ephemeral test/CI runs."""
+        if self.directory is not None:
+            Path(self.directory).mkdir(parents=True, exist_ok=True)
+        await super().check_config()
+
     def file_response(self, *args, **kwargs):
         resp = super().file_response(*args, **kwargs)
         # Media filenames are unique UUID hashes: they never mutate in-place.
@@ -85,7 +95,8 @@ class CachedStaticFiles(StaticFiles):
         return resp
 
 
-# Uploaded photos. check_dir=False because the folder is created at startup, not import time.
+# Uploaded photos. Ensure directory exists and check_dir=False for startup resilience.
+Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
 app.mount("/media", CachedStaticFiles(directory=settings.media_dir, check_dir=False), name="media")
 
 

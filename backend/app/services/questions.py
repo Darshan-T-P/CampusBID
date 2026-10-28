@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
@@ -31,17 +31,70 @@ def to_public(q: ListingQuestion) -> QuestionPublic:
         answer_text=q.answer_text,
         created_at=q.created_at,
         answered_at=q.answered_at,
+        hidden=q.hidden,
+        pinned=q.pinned,
     )
 
 
-def list_questions(db: Session, listing_id: int) -> list[QuestionPublic]:
-    stmt = (
-        select(ListingQuestion)
-        .where(ListingQuestion.listing_id == listing_id)
-        .order_by(ListingQuestion.created_at.desc())
-    )
-    rows = db.scalars(stmt).all()
+MAX_PINNED = 3
+
+
+def list_questions(db: Session, listing_id: int, viewer: User | None = None) -> list[QuestionPublic]:
+    """The thread, pinned answers first then newest. Hidden questions are only ever returned to the seller."""
+    listing = db.get(Listing, listing_id)
+    is_seller = viewer is not None and listing is not None and listing.seller_id == viewer.id
+    stmt = select(ListingQuestion).where(ListingQuestion.listing_id == listing_id)
+    if not is_seller:
+        stmt = stmt.where(ListingQuestion.hidden.is_(False))
+    rows = db.scalars(stmt.order_by(ListingQuestion.pinned.desc(), ListingQuestion.created_at.desc())).all()
     return [to_public(r) for r in rows]
+
+
+def _seller_question(db: Session, listing_id: int, question_id: int, user: User) -> ListingQuestion:
+    listing = db.get(Listing, listing_id)
+    if listing is None:
+        raise QuestionError("not_found", "Listing not found")
+    if listing.seller_id != user.id:
+        raise QuestionError("not_seller", "Only the seller can moderate questions on this listing")
+    question = db.get(ListingQuestion, question_id)
+    if question is None or question.listing_id != listing_id:
+        raise QuestionError("not_found", "Question not found on this listing")
+    return question
+
+
+def set_hidden(db: Session, listing_id: int, question_id: int, user: User, hidden: bool) -> QuestionPublic:
+    """Seller hides spam from everyone else (and can bring it back). Hiding also unpins it."""
+    question = _seller_question(db, listing_id, question_id, user)
+    question.hidden = hidden
+    if hidden:
+        question.pinned = False
+    db.commit()
+    db.refresh(question)
+    # No content in the event: a hidden question must not leak. Viewers just re-read the thread.
+    broadcaster.publish_nowait("question_updated", {"listing_id": listing_id}, listing_id=listing_id)
+    return to_public(question)
+
+
+def set_pinned(db: Session, listing_id: int, question_id: int, user: User, pinned: bool) -> QuestionPublic:
+    """Seller pins a helpful answered question to the top (up to three)."""
+    question = _seller_question(db, listing_id, question_id, user)
+    if pinned:
+        if not question.answer_text:
+            raise QuestionError("not_answered", "Answer the question before pinning it")
+        if question.hidden:
+            raise QuestionError("hidden", "Unhide the question before pinning it")
+        already = db.scalar(
+            select(func.count()).select_from(ListingQuestion).where(
+                ListingQuestion.listing_id == listing_id, ListingQuestion.pinned.is_(True), ListingQuestion.id != question_id
+            )
+        )
+        if already >= MAX_PINNED:
+            raise QuestionError("limit", f"You can pin up to {MAX_PINNED} questions. Unpin one first.")
+    question.pinned = pinned
+    db.commit()
+    db.refresh(question)
+    broadcaster.publish_nowait("question_updated", {"listing_id": listing_id}, listing_id=listing_id)
+    return to_public(question)
 
 
 def ask_question(db: Session, listing_id: int, user: User, text: str) -> QuestionPublic:

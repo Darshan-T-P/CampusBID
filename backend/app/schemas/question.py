@@ -23,3 +23,13 @@ class QuestionPublic(BaseModel):
     answer_text: str | None = None
     created_at: datetime
     answered_at: datetime | None = None
+    hidden: bool = False  # only the seller ever receives hidden questions
+    pinned: bool = False
+
+
+class QuestionHide(BaseModel):
+    hidden: bool = True
+
+
+class QuestionPin(BaseModel):
+    pinned: bool = True

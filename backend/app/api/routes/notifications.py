@@ -17,15 +17,17 @@ def list_notifications(
         int | None,
         Query(ge=0, description="Polling cursor: only notifications with a higher id, oldest first"),
     ] = None,
+    before_id: Annotated[int | None, Query(ge=1, description="History paging: only notifications older than this id")] = None,
     unread_only: bool = False,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ):
     """My notifications. Newest first by default; with `since_id`, a cursor feed for polling."""
-    items = service.list_for_user(db, user.id, since_id, unread_only, limit)
+    items = service.list_for_user(db, user.id, since_id, unread_only, limit, before_id)
     return NotificationFeed(
         items=items,
         unread_count=service.unread_count(db, user.id),
         latest_id=max((n.id for n in items), default=None),
+        oldest_id=min((n.id for n in items), default=None),
     )
 
 

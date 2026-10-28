@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { useNow } from '../hooks/useNow'
 import { timeAgo } from '../lib/format'
@@ -122,6 +122,12 @@ export function NotificationBell() {
               ))}
             </ul>
           )}
+
+          <div className="bell-foot">
+            <Link to="/notifications" onClick={() => setOpen(false)}>
+              See all notifications
+            </Link>
+          </div>
 
           {canPopUp() && (
             <div className="bell-foot">

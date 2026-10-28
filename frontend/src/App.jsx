@@ -8,6 +8,7 @@ import { EditListing } from './pages/EditListing'
 import { ForgotPassword } from './pages/ForgotPassword'
 import { Login } from './pages/Login'
 import { MyBids } from './pages/MyBids'
+import { Notifications } from './pages/Notifications'
 import { MyListings } from './pages/MyListings'
 import { NotFound } from './pages/NotFound'
 import { Profile } from './pages/Profile'
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="verify" element={<Verify />} />
           <Route path="watchlist" element={<Watchlist />} />
           <Route path="assistant" element={<Assistant />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

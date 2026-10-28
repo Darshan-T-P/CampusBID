@@ -3,8 +3,10 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export function Verify() {
+  usePageTitle('Verify your email')
   const { user, refreshUser } = useAuth()
   const navigate = useNavigate()
 

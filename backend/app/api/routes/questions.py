@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import DbSession, VerifiedUser
+from app.api.deps import DbSession, OptionalUser, VerifiedUser
 from app.core.ratelimit import enforce
-from app.schemas.question import AnswerCreate, QuestionCreate, QuestionPublic
+from app.schemas.question import AnswerCreate, QuestionCreate, QuestionHide, QuestionPin, QuestionPublic
 from app.services import questions as question_service
 from app.services.questions import QuestionError
 
@@ -14,6 +14,9 @@ _HTTP_STATUS = {
     "not_seller": status.HTTP_403_FORBIDDEN,
     "closed": status.HTTP_409_CONFLICT,
     "too_short": status.HTTP_422_UNPROCESSABLE_CONTENT,
+    "not_answered": status.HTTP_409_CONFLICT,
+    "hidden": status.HTTP_409_CONFLICT,
+    "limit": status.HTTP_409_CONFLICT,
 }
 
 
@@ -22,9 +25,9 @@ def _error(e: QuestionError) -> HTTPException:
 
 
 @router.get("/listings/{listing_id}/questions", response_model=list[QuestionPublic])
-def get_questions(listing_id: int, db: DbSession):
-    """Public listing Q&A thread: any student can read questions and seller answers."""
-    return question_service.list_questions(db, listing_id)
+def get_questions(listing_id: int, db: DbSession, user: OptionalUser):
+    """Public listing Q&A thread: pinned first, then newest. Hidden questions are sent only to the seller."""
+    return question_service.list_questions(db, listing_id, user)
 
 
 @router.post("/listings/{listing_id}/questions", response_model=QuestionPublic, status_code=status.HTTP_201_CREATED)
@@ -43,5 +46,25 @@ def post_answer(listing_id: int, question_id: int, body: AnswerCreate, user: Ver
     enforce(f"answer:user:{user.id}", limit=40, window=3600)
     try:
         return question_service.answer_question(db, listing_id, question_id, user, body.answer_text)
+    except QuestionError as e:
+        raise _error(e) from e
+
+
+@router.post("/listings/{listing_id}/questions/{question_id}/hide", response_model=QuestionPublic)
+def hide_question(listing_id: int, question_id: int, user: VerifiedUser, db: DbSession, body: QuestionHide | None = None):
+    """Seller hides spam from everyone else (hidden=false brings it back)."""
+    enforce(f"moderate:user:{user.id}", limit=120, window=3600)
+    try:
+        return question_service.set_hidden(db, listing_id, question_id, user, body.hidden if body else True)
+    except QuestionError as e:
+        raise _error(e) from e
+
+
+@router.post("/listings/{listing_id}/questions/{question_id}/pin", response_model=QuestionPublic)
+def pin_question(listing_id: int, question_id: int, user: VerifiedUser, db: DbSession, body: QuestionPin | None = None):
+    """Seller pins a helpful answered question to the top of the thread (pinned=false unpins it)."""
+    enforce(f"moderate:user:{user.id}", limit=120, window=3600)
+    try:
+        return question_service.set_pinned(db, listing_id, question_id, user, body.pinned if body else True)
     except QuestionError as e:
         raise _error(e) from e

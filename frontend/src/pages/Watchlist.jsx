@@ -7,8 +7,10 @@ import { WantsPanel } from '../components/WantsPanel'
 import { WatchButton } from '../components/WatchButton'
 import { useWatchlist } from '../hooks/useWatchlist'
 import { formatRupees } from '../lib/format'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export function Watchlist() {
+  usePageTitle('Watchlist')
   const { query, items } = useWatchlist({ poll: true })
 
   if (query.isPending) return <p className="muted center">Loading your watchlist…</p>

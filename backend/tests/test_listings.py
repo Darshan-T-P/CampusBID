@@ -172,3 +172,34 @@ def test_reading_an_expired_listing_closes_it(client, db_session):
 def test_stream_unknown_listing_returns_404(client):
     assert client.get("/listings/99999/stream").status_code == 404
 
+
+def test_delete_listing_without_bids_permanently_removes_it(client):
+    seller_h = auth_header(client, email="sellerdel@campus.edu", name="SellerDel")
+    other_h = auth_header(client, email="otherdel@campus.edu", name="OtherDel")
+    lid = create(client, seller_h).json()["id"]
+
+    # Other user cannot delete
+    assert client.delete(f"/listings/{lid}", headers=other_h).status_code == 403
+
+    # Seller deletes -> 204
+    assert client.delete(f"/listings/{lid}", headers=seller_h).status_code == 204
+    assert client.get(f"/listings/{lid}").status_code == 404
+
+
+def test_delete_listing_with_bids_is_rejected_and_must_be_cancelled(client):
+    seller_h = auth_header(client, email="sellerdel2@campus.edu", name="SellerDel2")
+    bidder_h = auth_header(client, email="bidderdel@campus.edu", name="BidderDel")
+    lid = create(client, seller_h).json()["id"]
+
+    # Bidder places a bid
+    assert client.post(f"/listings/{lid}/bids", json={"amount": 500}, headers=bidder_h).status_code == 201
+
+    # Seller tries to delete permanently -> 409 conflict
+    r = client.delete(f"/listings/{lid}", headers=seller_h)
+    assert r.status_code == 409
+
+    # Seller can cancel instead -> 200
+    r_cancel = client.post(f"/listings/{lid}/cancel", headers=seller_h)
+    assert r_cancel.status_code == 200
+    assert r_cancel.json()["status"] == "cancelled"
+

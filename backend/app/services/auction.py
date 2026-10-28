@@ -50,7 +50,7 @@ def close_if_due(db: Session, listing: Listing, now: datetime) -> bool:
         return False
     if listing.leading_bid_id is not None:
         listing.status = ListingStatus.pending_approval
-        listing.outcome_note = f"Closed with a winning bid of {listing.current_price}"
+        listing.outcome_note = f"Closed with a winning bid of ₹{listing.current_price:,}"
     else:
         listing.status = ListingStatus.unsold
         listing.outcome_note = "Closed with no bids"

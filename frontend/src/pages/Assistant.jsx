@@ -8,6 +8,7 @@ import { Countdown } from '../components/Countdown'
 import { Icon } from '../components/Icon'
 import { MAX_CHARS, SUGGESTIONS, canSend, plainText, toApiMessages, withProposalState } from '../lib/assistantChat'
 import { formatRupees } from '../lib/format'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const STORE = 'relay.assistant'
 
@@ -84,6 +85,7 @@ function ProposalCard({ proposal, state, onConfirm, onDismiss }) {
 }
 
 export function Assistant() {
+  usePageTitle('Assistant')
   const queryClient = useQueryClient()
   const [messages, setMessages] = useState(loadChat)
   const [draft, setDraft] = useState('')

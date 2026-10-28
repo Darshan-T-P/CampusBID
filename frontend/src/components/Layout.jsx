@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { AlertsPrompt } from './AlertsPrompt'
 import { Icon } from './Icon'
 import { NotificationBell } from './NotificationBell'
 import { UserMenu } from './UserMenu'
@@ -23,6 +24,9 @@ export function Layout() {
 
   return (
     <>
+      <a href="#main" className="skip-link">
+        Skip to main content
+      </a>
       <header className="topbar">
         <div className="container topbar-inner">
           <Link to="/" className="brand">
@@ -64,7 +68,9 @@ export function Layout() {
         </div>
       )}
 
-      <main className="container page">
+      {isSignedIn && <AlertsPrompt />}
+
+      <main id="main" tabIndex={-1} className="container page">
         <Outlet />
       </main>
 

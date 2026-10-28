@@ -7,6 +7,7 @@ _LISTING_STATUS = {
     "not_found": status.HTTP_404_NOT_FOUND,
     "forbidden": status.HTTP_403_FORBIDDEN,
     "conflict": status.HTTP_409_CONFLICT,
+    "has_bids": status.HTTP_409_CONFLICT,
 }
 
 

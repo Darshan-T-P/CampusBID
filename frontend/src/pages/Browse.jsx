@@ -19,8 +19,10 @@ import {
   hasActiveFilters,
   isPriceRangeInvalid,
 } from '../lib/query'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export function Browse() {
+  usePageTitle('Browse')
   const [searchParams, setSearchParams] = useSearchParams()
   const { isSignedIn } = useAuth()
   const filters = filtersFromParams(searchParams)

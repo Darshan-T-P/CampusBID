@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Text
+from sqlalchemy import Boolean, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.clock import utcnow
@@ -25,6 +25,9 @@ class ListingQuestion(Base):
     answer_text: Mapped[str | None] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     answered_at: Mapped[datetime | None] = mapped_column(UTCDateTime, default=None)
+    # Moderation by the seller: spam is hidden from everyone but the seller; a helpful answer can be pinned to the top.
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False)
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False)
 
     asker: Mapped["User"] = relationship(foreign_keys=[asker_id])
     listing: Mapped["Listing"] = relationship(foreign_keys=[listing_id])

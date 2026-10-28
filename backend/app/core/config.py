@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     groq_model: str = "openai/gpt-oss-120b"  # must support tool calling; list what your key can use at /openai/v1/models
     groq_base_url: str = "https://api.groq.com/openai/v1"
     assistant_timeout: int = 25
+    # The most auctions one student can have open at once (a guard against floods and runaway scripts).
+    max_open_listings: int = 20
     # Production: serve the built frontend from this server (the API moves under /api). Off in development.
     serve_frontend: bool = False
     frontend_dist: str = "../frontend/dist"

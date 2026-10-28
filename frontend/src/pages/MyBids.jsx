@@ -8,8 +8,10 @@ import { Icon } from '../components/Icon'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatRupees } from '../lib/format'
 import { groupBids } from '../lib/myBids'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export function MyBids() {
+  usePageTitle('My bids')
   const autoQuery = useQuery({ queryKey: ['my-auto-bids'], queryFn: () => api('/me/auto-bids'), refetchInterval: 10_000 })
   const query = useQuery({
     queryKey: ['my-bids'],

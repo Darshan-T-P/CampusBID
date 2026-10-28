@@ -3,8 +3,10 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
 import { PasswordField } from '../components/PasswordField'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export function Login() {
+  usePageTitle('Sign in')
   const { login, isSignedIn, user, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()

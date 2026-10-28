@@ -31,10 +31,13 @@ public, and only verified campus students can take part.
 - **Handover spot.** Sellers can name where on campus they'll meet (with one-click suggestions). It shows on the card and the auction page, can be changed even after bidding starts, and the winner is told exactly where to meet when the sale is approved.
 - **Selling.** List an item with 1-5 photos, edit it (only the description and photos once bidding starts, with a visible "Edited" marker), or cancel it.
 - **Sale workflow.** When an auction ends with a winner, the seller approves or rejects; after approval they confirm the handover or record that the winner didn't collect.
+- **Alerts for things not listed yet ("saved wants").** Save words, a category and/or a price limit (or press "Notify me when one is listed" on a search that finds nothing). When someone posts a matching listing you get a notification, stored on the server so you see it even if you were offline.
+- **Questions before bidding.** Anyone can ask a question on an open auction; the seller answers once, publicly, and both sides are notified, live. Buyers get a hint ("someone already asked something like this") before repeating a question. Sellers can hide spam (visible only to them) and pin up to three helpful answers to the top.
+- **Duplicate-listing check and open-listing cap.** Posting an item that looks like one of your own open listings (same photo, same title, or a near-identical title in the same category) asks "Is this a second item?" first, and you confirm or go to the existing listing. One student can have at most 20 auctions open at once (`MAX_OPEN_LISTINGS`).
 - **Watchlist and reminders.** Save an auction with the bookmark on a card or the auction page. Saved auctions, and ones you've bid on, send a reminder an hour and five minutes before closing (worded for whether you're leading), and you're told how it ended.
 - **AI assistant.** An Assistant tab where a student can say "find me a cycle under ₹2,000" and get a straight answer from the real open auctions, and ask the app to bid for them. It plays by the same rules as everyone: it never acts without the student's go-ahead (the model has no bidding tool, it can only prepare a confirmation card, and the student's Confirm press makes the normal automatic-bid call), it never goes past the amount the student wrote in the chat (enforced in code, not just in the prompt), and it never sees other students' account details (it is only given public listing facts and the student's own bids). Text inside listings is treated as data, so a listing can't instruct it. Powered by Groq (`GROQ_API_KEY`); switched off when no key is set.
 - **Contact numbers.** Students add a mobile number at sign-up (editable on the profile). It is private: it appears in no public view, and only the seller and the winning buyer can fetch each other's number, and only after the seller approves the sale. It shows as a card with Call, WhatsApp and Copy on the auction page, My bids and My listings, and is wiped if the account is deleted.
-- **Notifications.** A bell with an unread badge plus opt-in desktop pop-ups when the tab is in the background: outbid, closing soon, you won or didn't, ended, approved or rejected, cancelled. They are stored records, so a buyer who was offline finds everything they missed.
+- **Notifications.** A bell with an unread badge plus opt-in desktop pop-ups when the tab is in the background: outbid, closing soon, you won or didn't, ended, approved or rejected, cancelled. They are stored records, so a buyer who was offline finds everything they missed, and a Notifications page shows the full history. A one-time banner offers to turn on desktop alerts.
 - **Profile.** A round avatar menu (profile, my listings, my bids, sign out), with Watchlist in the top bar and a profile page with a summary of what you sell and bid on, editable name, department and year, a change-password form (unlocked once the current password is confirmed) that signs out your other devices, and account deletion with a typed confirmation. Deletion is refused while others depend on you (open auctions, a lead on an open auction, a sale in progress); afterwards your data is removed and any bids or listings you made stay in others' histories as "Deleted user".
 - **My listings and My bids** pages that say, in plain words, what each auction means for you.
 
@@ -96,6 +99,23 @@ The browser calls the backend under `/api`; the Vite dev server proxies that to 
 (`VITE_API_TARGET` overrides the default `http://localhost:8000`). In dev mode the interactive API docs are at
 `http://localhost:8000/docs`.
 
+### Run it as one server (production build or Docker)
+
+```bash
+# Build the frontend, then let the backend serve it (the API moves under /api):
+cd frontend && npm install && npm run build
+cd ../backend && SERVE_FRONTEND=true .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# Or with Docker (the database and photos live in the /data volume):
+docker build -t relay .
+docker run -p 8000:8000 -v relay-data:/data -e DEV_MODE=true -e AUTO_VERIFY=true relay
+```
+
+For a real deployment set `SECRET_KEY`, `ALLOWED_EMAIL_DOMAINS` and the `SMTP_*` settings instead of the two demo
+switches (see `backend/.env.example`). **Run a single server process:** the live-update hub, the rate limiter and the
+auction closer keep their state in memory, so several workers would not share it. Put it behind HTTPS (and, if you add a
+reverse proxy, turn response buffering off for `/api/listings/*/stream`).
+
 ## Demo
 
 ```bash
@@ -126,6 +146,7 @@ Set via environment variables or `backend/.env` (see `backend/.env.example`).
 | `REQUIRED_EMAIL_SUFFIX` | `.edu` | Every registering address must end with this. Empty turns the check off. |
 | `SECRET_KEY` | dev value | Signs login tokens. **Required to be long and random outside dev mode.** |
 | `DEV_MODE` | `false` | Local/demo switch: skips the two requirements above, prints verification codes to the log, serves `/docs`. |
+| `MAX_OPEN_LISTINGS` | `20` | The most auctions one student can have open at once. |
 | `AUTO_VERIFY` | `false` | Mark new accounts verified immediately (skips the email step). |
 | `EMAIL_BACKEND` | `console` | `smtp` sends real email; `console` sends nothing (in dev mode it prints the message to the log). |
 | `EMAIL_FROM` | `Relay <no-reply@localhost>` | The sender shown on every email. |
@@ -191,8 +212,8 @@ and are per process. The database file is not encrypted at rest (use disk encryp
 ## Tests
 
 ```bash
-cd backend  && .venv/bin/python -m pytest     # 477 tests: rules, races, automatic bidding, security, auth, email, notifications, seed
-cd frontend && npm test                        # 103 tests: formatting, filters, forms, bid and sign-up logic
+cd backend  && .venv/bin/python -m pytest     # 536 tests: rules, races, automatic bidding, security, auth, email, notifications, seed
+cd frontend && npm test                        # 115 tests: formatting, filters, forms, bid and sign-up logic
 ```
 
 The concurrency tests prove the lock matters: one transaction holds the write lock while an edit or approval waits,
@@ -220,7 +241,7 @@ frontend/src/
 | Area | Endpoints |
 |---|---|
 | Accounts | `POST /auth/register`, `/auth/login`, `/auth/verify`, `/auth/resend-code`, `/auth/forgot-password`, `/auth/reset-password`; `GET /me` |
-| Listings | `GET/POST /listings`, `GET/PATCH /listings/{id}`, `POST /listings/{id}/cancel`, `POST/DELETE /listings/{id}/images` |
+| Listings | `GET/POST /listings` (a possible duplicate answers 409 until `confirm_duplicate=true`), `GET/PATCH /listings/{id}`, `POST /listings/{id}/cancel`, `POST/DELETE /listings/{id}/images` |
 | Bids | `POST/GET /listings/{id}/bids` |
 | Automatic bidding | `PUT/DELETE /listings/{id}/auto-bid`, `GET /listings/{id}/auto-bids` (public), `GET /me/auto-bids` |
 | Sale | `POST /listings/{id}/approve`, `/reject`, `/handover`, `/pickup-failed` |
@@ -228,8 +249,9 @@ frontend/src/
 | Assistant | `GET /assistant/status`, `POST /assistant/chat` (it can propose; the student confirms through `PUT /listings/{id}/auto-bid`) |
 | Sale contact | `GET /listings/{id}/contact` (seller and winner only, after approval) |
 | Profile | `PATCH /me`, `POST /me/password`, `POST /me/password/check`, `POST /me/delete` |
+| Alerts (wants) | `GET/POST /me/wants`, `DELETE /me/wants/{id}` |
 | Watchlist | `PUT/DELETE /listings/{id}/watch`, `GET /me/watchlist` |
-| Notifications | `GET /notifications` (`?since_id=` for polling), `POST /notifications/{id}/read`, `/notifications/read-all` |
+| Notifications | `GET /notifications` (`?since_id=` for polling, `?before_id=` for older pages), `POST /notifications/{id}/read`, `/notifications/read-all` |
 
 ## Looking at the database
 
@@ -245,6 +267,6 @@ new columns to an existing database (it never drops or changes data). Renaming o
 
 ## Not built yet
 
-- Duplicate-listing protection (double-submit key, same-photo detection, open-listing cap)
 - Admin role (suspend users, remove listings, audit log)
-- Optional extras: saved wants, per-auction Q&A, an AI assistant
+- Web Push (instant desktop alerts for a tab that has been hidden for a long time)
+- Phone-number verification (numbers are self-declared)

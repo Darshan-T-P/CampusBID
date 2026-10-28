@@ -5,10 +5,12 @@ import { useAuth } from '../auth/useAuth'
 import { PasswordField } from '../components/PasswordField'
 import { YEARS } from '../lib/format'
 import { DEPARTMENTS, REQUIRED_EMAIL_SUFFIX, passwordStrength, validateRegistration } from '../lib/registerForm'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const EMPTY = { email: '', displayName: '', year: '', department: '', phone: '', password: '', confirm: '' }
 
 export function Register() {
+  usePageTitle('Create your account')
   const { register, isSignedIn, user, loading } = useAuth()
   const navigate = useNavigate()
 

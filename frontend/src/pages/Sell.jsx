@@ -18,6 +18,7 @@ import {
   toLocalInputValue,
   validateListing,
 } from '../lib/listingForm'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const EMPTY = {
   title: '',
@@ -98,6 +99,7 @@ const TIPS = [
 ]
 
 export function Sell() {
+  usePageTitle('Sell an item')
   const { user } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()

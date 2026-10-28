@@ -6,9 +6,11 @@ import { useAuth } from '../auth/useAuth'
 import { PasswordField } from '../components/PasswordField'
 import { passwordStrength } from '../lib/registerForm'
 import { validateForgot, validateReset } from '../lib/resetForm'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 /** Two steps on one page: ask for a code by email, then use it to choose a new password. */
 export function ForgotPassword() {
+  usePageTitle('Reset your password')
   const { isSignedIn, signInWithToken } = useAuth()
   const navigate = useNavigate()
 

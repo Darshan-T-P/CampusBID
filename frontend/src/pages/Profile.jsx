@@ -10,6 +10,7 @@ import { YEARS, formatRupees, yearLabel } from '../lib/format'
 import { formatPhone } from '../lib/phone'
 import { memberSince, profileChanges, validatePasswordChange, validateProfile } from '../lib/profileForm'
 import { DEPARTMENTS, passwordStrength } from '../lib/registerForm'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 /** One number with a label. `to` makes the whole tile a link. */
 function Stat({ value, label, to, tone }) {
@@ -311,6 +312,7 @@ function DeleteAccount() {
 }
 
 export function Profile() {
+  usePageTitle('Profile')
   const { user } = useAuth()
   if (!user) return null // RequireAuth shows the loading state; nothing to render until we know who this is
   const academic = [yearLabel(user.year_of_study), user.department].filter(Boolean).join(' · ')

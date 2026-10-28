@@ -81,6 +81,11 @@ export function useAuctionStream(listingId, currentUserId) {
         queryClient.invalidateQueries({ queryKey: ['notifications'] })
       })
 
+      // The seller hid or pinned a question: re-read the thread (the event carries no content, so nothing hidden leaks).
+      eventSource.addEventListener('question_updated', () => {
+        queryClient.invalidateQueries({ queryKey: ['questions', String(listingId)] })
+      })
+
       eventSource.addEventListener('question_answered', () => {
         queryClient.invalidateQueries({ queryKey: ['questions', String(listingId)] })
         queryClient.invalidateQueries({ queryKey: ['notifications'] })

@@ -10,8 +10,8 @@
   /* Typography Colors */
   --text: #0f172a;
   --text-secondary: #334155;
-  --muted: #64748b;
-  --muted-light: #94a3b8;
+  --muted: #566579; /* 5.4:1 on the tinted backgrounds too (the old #64748b was 4.4:1 there) */
+  --muted-light: #64748b; /* placeholder text: 4.8:1 on white (the old #94a3b8 was 2.6:1) */
 
   /* Borders */
   --border: #e2e8f0;
@@ -4473,4 +4473,122 @@ input:disabled {
 
 .duplicate-box p {
   margin: 0;
+}
+
+/* --- Q&A moderation and the duplicate-question hint --- */
+.similar-hint {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-md);
+  background: #fffbeb;
+  font-size: 0.9rem;
+}
+
+.qa-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.qa-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.qa-flag-pinned {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.qa-flag-hidden {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.qa-card-hidden {
+  opacity: 0.65;
+  border-style: dashed;
+}
+
+.qa-moderation {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+/* --- Accessibility: skip link and a visible focus ring everywhere --- */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 200;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: #0f172a;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 10px;
+}
+
+:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+main:focus {
+  outline: none; /* the skip link moves focus here; the whole page isn't a control */
+}
+
+/* --- Notifications page and the desktop-alert offer --- */
+.notif-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notif-page-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notif-page-list .bell-item {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.alerts-prompt {
+  background: #eff6ff;
+  border-bottom: 1px solid #bfdbfe;
+}
+
+.alerts-prompt-inner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-block: 10px;
+  font-size: 0.9rem;
+  color: #1e3a8a;
+}
+
+.alerts-prompt-inner span {
+  flex: 1 1 280px;
 }

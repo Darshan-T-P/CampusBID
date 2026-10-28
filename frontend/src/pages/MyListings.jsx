@@ -10,6 +10,7 @@ import { StatusBadge } from '../components/StatusBadge'
 import { ContactCard } from '../components/ContactCard'
 import { formatRupees } from '../lib/format'
 import { groupListings } from '../lib/sale'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const LIMIT = 50
 
@@ -68,6 +69,7 @@ function Row({ listing, notice, onNotice }) {
 }
 
 export function MyListings() {
+  usePageTitle('My listings')
   // One message per listing, kept here so it survives the listing moving between sections.
   const [notices, setNotices] = useState({})
   const setNotice = (id) => (notice) => setNotices((n) => ({ ...n, [id]: notice }))

@@ -5,12 +5,13 @@ import difflib
 import hashlib
 import io
 import re
+import shutil
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from PIL import Image, ImageOps
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.clock import utcnow
@@ -143,7 +144,7 @@ def _write_images(
         path.write_bytes(optimized)
         written.append(path)
         listing.images.append(
-            ListingImage(path=f"listings/{listing.id}/{name}", position=start + offset, sha256=hashlib.sha256(data).hexdigest())
+            ListingImage(path=f"listings/{listing.id}/{name}", position=start + offset, sha256=hashlib.sha256(optimized).hexdigest())
         )
 
 
@@ -179,7 +180,9 @@ def _normalize_title(title: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
 
 
-def find_possible_duplicate(db: Session, seller_id: int, title: str, category: Category, blobs: list[bytes]) -> DuplicateListing | None:
+def find_possible_duplicate(
+    db: Session, seller_id: int, title: str, category: Category, blobs: list[bytes], extensions: list[str]
+) -> DuplicateListing | None:
     """Does this seller already have a LIVE listing that looks like the one they are posting?
 
     Same photo (by file fingerprint), the same title once case and punctuation are ignored, or a near-identical title in
@@ -188,7 +191,8 @@ def find_possible_duplicate(db: Session, seller_id: int, title: str, category: C
     mine = db.scalars(
         select(Listing).where(Listing.seller_id == seller_id, Listing.status.in_(_LIVE)).options(selectinload(Listing.images))
     ).all()
-    fingerprints = {hashlib.sha256(b).hexdigest() for b in blobs}
+    # Compared the way they are stored: after the same optimisation, so a photo posted twice gives the same fingerprint.
+    fingerprints = {hashlib.sha256(_optimize_image(b, ext)).hexdigest() for b, ext in zip(blobs, extensions)}
     wanted = _normalize_title(title)
     for existing in mine:
         if any(image.sha256 in fingerprints for image in existing.images if image.sha256):
@@ -200,6 +204,23 @@ def find_possible_duplicate(db: Session, seller_id: int, title: str, category: C
         if existing.category == category and difflib.SequenceMatcher(None, theirs, wanted).ratio() >= 0.85:
             return DuplicateListing(existing, "similar")
     return None
+
+
+def backfill_image_fingerprints(db: Session) -> int:
+    """Give photos uploaded before fingerprints existed one, read from the stored file. Run at startup; cheap when
+    there is nothing to do. Returns how many were filled in."""
+    rows = db.scalars(select(ListingImage).where(ListingImage.sha256.is_(None)).limit(2000)).all()
+    done = 0
+    for image in rows:
+        path = Path(settings.media_dir) / image.path
+        try:
+            image.sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+            done += 1
+        except OSError:
+            continue  # the file is gone: nothing to fingerprint
+    if done:
+        db.commit()
+    return done
 
 
 def create_listing(
@@ -233,8 +254,15 @@ def create_listing(
         now,
     )
     extensions = _validate_images(images)
+    open_now = db.scalar(
+        select(func.count()).select_from(Listing).where(Listing.seller_id == seller.id, Listing.status == ListingStatus.active)
+    )
+    if open_now >= settings.max_open_listings:
+        raise ListingError(
+            f"You can have up to {settings.max_open_listings} auctions open at once. Cancel one, or wait for one to end.", "conflict"
+        )
     if not confirm_duplicate:
-        duplicate = find_possible_duplicate(db, seller.id, fields["title"], fields["category"], images)
+        duplicate = find_possible_duplicate(db, seller.id, fields["title"], fields["category"], images, extensions)
         if duplicate is not None:
             raise duplicate
 
@@ -319,6 +347,17 @@ def remove_image(
     return listing
 
 
+_LEGACY_AMOUNT = re.compile(r"(winning bid of |sale completed at |approved by the seller at )(\d+)", re.IGNORECASE)
+
+
+def format_outcome_note(note: str | None) -> str | None:
+    """Notes written before rupee signs were added say "winning bid of 2800". Show every note the same way
+    ("₹2,800") without rewriting what is stored. Already-formatted notes are left alone."""
+    if not note:
+        return note
+    return _LEGACY_AMOUNT.sub(lambda m: f"{m.group(1)}₹{int(m.group(2)):,}", note)
+
+
 def seller_record(db: Session, seller: User, now: datetime) -> SellerPublic:
     """The seller's public details plus a small track record (counts only, nothing about buyers)."""
     by_status = dict(
@@ -362,7 +401,7 @@ def listing_detail(db: Session, listing: Listing, now: datetime | None = None) -
         min_next_bid=min_valid_bid(listing) if listing.status == ListingStatus.active else None,
         bid_count=bid_count,
         leading_bidder=leading_bidder,
-        outcome_note=listing.outcome_note,
+        outcome_note=format_outcome_note(listing.outcome_note),
         handover_spot=listing.handover_spot,
         edited_at=listing.edited_at,
         extension_count=listing.extension_count,
@@ -502,3 +541,34 @@ def my_bids(db: Session, user_id: int) -> list[MyBid]:
         MyBid(listing=_card(l, counts.get(l.id, 0)), my_highest_bid=top, is_leading=l.leading_bid_id in my_leading)
         for l, top in rows
     ]
+
+
+def delete_listing(db: Session, listing_id: int, user_id: int) -> None:
+    """Permanently deletes a listing that has no bids. If it has bids, raise error telling user to cancel."""
+    listing = db.get(Listing, listing_id)
+    if listing is None:
+        raise ListingError("Listing not found", "not_found")
+    if listing.seller_id != user_id:
+        raise ListingError("Only the seller can delete this listing", "forbidden")
+
+    # Check if there are any bids
+    has_bids = db.scalar(select(func.count()).select_from(Bid).where(Bid.listing_id == listing_id)) > 0
+    if has_bids:
+        raise ListingError("Auctions with placed bids cannot be permanently deleted. You can cancel it instead.", "has_bids")
+
+    if listing.status in (ListingStatus.pending_approval, ListingStatus.reserved, ListingStatus.completed):
+        raise ListingError("Sales in progress or completed cannot be deleted.", "conflict")
+
+    # Remove photo folder from disk
+    folder = Path(settings.media_dir) / "listings" / str(listing.id)
+    if folder.exists():
+        shutil.rmtree(folder, ignore_errors=True)
+
+    # Delete related dependent rows
+    from app.models import Notification, Watch
+    from app.models.question import ListingQuestion
+    db.execute(delete(Watch).where(Watch.listing_id == listing_id))
+    db.execute(delete(ListingQuestion).where(ListingQuestion.listing_id == listing_id))
+    db.execute(delete(Notification).where(Notification.listing_id == listing_id))
+    db.delete(listing)
+    db.commit()

@@ -19,6 +19,7 @@ class NotificationFeed(BaseModel):
     items: list[NotificationOut]
     unread_count: int  # all unread, not just this page: drives the bell badge
     latest_id: int | None  # highest id in `items`; pass it back as `since_id` to poll
+    oldest_id: int | None = None  # lowest id in `items`; pass it back as `before_id` to load older ones
 
 
 class MarkAllResult(BaseModel):

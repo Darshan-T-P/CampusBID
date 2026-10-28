@@ -143,6 +143,15 @@ def cancel(listing_id: int, user: CurrentUser, db: DbSession):
     return detail
 
 
+@router.delete("/listings/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_listing(listing_id: int, user: CurrentUser, db: DbSession):
+    """Permanently delete a listing if it has no bids. If it has bids, caller should cancel instead."""
+    try:
+        listing_service.delete_listing(db, listing_id, user.id)
+    except ListingError as e:
+        raise listing_http_error(e) from e
+
+
 @router.post("/listings/{listing_id}/images", response_model=ListingDetail)
 def add_photos(
     listing_id: int,
