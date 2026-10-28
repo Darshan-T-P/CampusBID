@@ -74,9 +74,11 @@ def send_email(to: str, subject: str, text: str, html_body: str | None = None) -
 # --- the messages ------------------------------------------------------------
 
 
-def _wrap(heading: str, lines: list[str], code: str | None = None) -> tuple[str, str]:
-    """(plain text, html) with the same content. Everything dynamic is escaped for the HTML version."""
-    text = "\n\n".join([heading, *([f"    {code}"] if code else []), *lines, "Relay"])
+def _wrap(heading: str, lines: list[str], code: str | None = None, link: tuple[str, str] | None = None) -> tuple[str, str]:
+    """(plain text, html) with the same content. Everything dynamic is escaped for the HTML version.
+    `link` is (label, url): a button-style link in the HTML, and "label: url" in the plain text."""
+    link_text = [f"{link[0]}: {link[1]}"] if link else []
+    text = "\n\n".join([heading, *([f"    {code}"] if code else []), *lines, *link_text, "Relay"])
     box = (
         f'<p style="font-size:30px;letter-spacing:8px;font-weight:700;margin:20px 0;'
         f'padding:14px 18px;background:#f1f5f9;border-radius:10px;display:inline-block">{html.escape(code)}</p>'
@@ -84,6 +86,11 @@ def _wrap(heading: str, lines: list[str], code: str | None = None) -> tuple[str,
         else ""
     )
     body = "".join(f'<p style="margin:0 0 12px">{html.escape(line)}</p>' for line in lines)
+    if link:
+        body += (
+            f'<p style="margin:18px 0"><a href="{html.escape(link[1], quote=True)}" style="background:#1d4ed8;color:#fff;'
+            f'padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600">{html.escape(link[0])}</a></p>'
+        )
     page = (
         '<div style="font-family:Inter,Arial,sans-serif;color:#0f172a;max-width:480px;margin:0 auto;padding:24px">'
         f'<h2 style="margin:0 0 12px">{html.escape(heading)}</h2>{box}{body}'
@@ -119,3 +126,74 @@ def password_changed_email() -> tuple[str, str, str]:
          "If this wasn't you, reset your password right away and contact campus support."],
     )
     return "Your Relay password was changed", text, page
+
+
+# --- how auctions and sales turn out ----------------------------------------------------------------------------
+
+
+def _rupees(amount: int) -> str:
+    return f"₹{amount:,}"
+
+
+def _person_line(role: str, name: str, phone: str | None) -> str:
+    if phone:
+        return f"{role}: {name}, mobile {phone}"
+    return f"{role}: {name} hasn't added a mobile number, so arrange the handover in person at the meet-up spot."
+
+
+def auction_won_email(title: str, price: int, seller_name: str, handover_spot: str | None, url: str) -> tuple[str, str, str]:
+    lines = [
+        f"Congratulations! Your bid of {_rupees(price)} was the highest when the auction ended.",
+        f"It's provisional until the seller, {seller_name}, approves the sale. You'll get another email with their contact "
+        "details as soon as they do.",
+    ]
+    if handover_spot:
+        lines.append(f"Planned handover spot: {handover_spot}.")
+    text, page = _wrap(f"You won {title}", lines, link=("View the auction", url))
+    return f"You won {title} for {_rupees(price)}", text, page
+
+
+def auction_ended_seller_email(title: str, price: int, winner_name: str, url: str) -> tuple[str, str, str]:
+    lines = [
+        f"The auction ended with a top bid of {_rupees(price)} from {winner_name}.",
+        "Open the sale to approve or reject it. The winner's contact details are shared with you once you approve.",
+    ]
+    text, page = _wrap(f"{title} has ended", lines, link=("Review the sale", url))
+    return f"{title} ended at {_rupees(price)}: approve or reject the sale", text, page
+
+
+def sale_approved_buyer_email(
+    title: str, price: int, seller_name: str, seller_phone: str | None, handover_spot: str | None, url: str
+) -> tuple[str, str, str]:
+    lines = [
+        f"{seller_name} approved your winning bid of {_rupees(price)}.",
+        _person_line("Seller", seller_name, seller_phone),
+    ]
+    if handover_spot:
+        lines.append(f"Meet at: {handover_spot}.")
+    lines.append("Meet in daylight in a public campus spot, and check the item before you pay.")
+    text, page = _wrap(f"Sale approved: {title}", lines, link=("Open the listing", url))
+    return f"Sale approved: {title}", text, page
+
+
+def sale_approved_seller_email(
+    title: str, price: int, buyer_name: str, buyer_phone: str | None, handover_spot: str | None, url: str
+) -> tuple[str, str, str]:
+    lines = [
+        f"You approved the sale of {title} for {_rupees(price)}.",
+        _person_line("Buyer", buyer_name, buyer_phone),
+    ]
+    if handover_spot:
+        lines.append(f"Meet at: {handover_spot}.")
+    lines.append("After the handover, mark it as handed over in My listings.")
+    text, page = _wrap(f"Sale approved: {title}", lines, link=("Open My listings", url))
+    return f"Contact details for {title}", text, page
+
+
+def sale_rejected_email(title: str, note: str, url: str) -> tuple[str, str, str]:
+    text, page = _wrap(
+        f"The sale of {title} did not go ahead",
+        [f"{note}", "Your bid no longer applies. Other auctions are still open."],
+        link=("Browse auctions", url),
+    )
+    return f"The sale of {title} did not go ahead", text, page

@@ -53,6 +53,16 @@ export function useAuctionStream(listingId, currentUserId) {
         }
       })
 
+      // Someone saved or unsaved the auction: just the new number.
+      eventSource.addEventListener('watchers', (e) => {
+        try {
+          const { count } = JSON.parse(e.data)
+          queryClient.setQueryData(['listing', String(listingId)], (old) => (old ? { ...old, watchers: count } : old))
+        } catch {
+          /* a bad payload: the next poll corrects it */
+        }
+      })
+
       // The auction changed state (approved, handed over, cancelled): the event carries the fresh listing.
       eventSource.addEventListener('status', (e) => {
         try {

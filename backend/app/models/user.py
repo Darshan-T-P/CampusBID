@@ -20,6 +20,8 @@ class User(Base):
     year_of_study: Mapped[int | None] = mapped_column(Integer, default=None)  # 1-5, or 6 for postgraduate
     # Private. Shared only with the other side of an approved sale (see services/sale.py), never shown publicly.
     phone: Mapped[str | None] = mapped_column(String(20), default=None)
+    # Emails about how auctions and sales turn out (won, ended, approved, rejected). On by default; students can turn it off.
+    notify_by_email: Mapped[bool] = mapped_column(Boolean, default=True)
     # Only verified campus emails may list or bid; unverified accounts can browse.
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     # Login tokens issued before this moment are refused, so changing the password signs out other devices.

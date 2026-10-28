@@ -6,12 +6,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import auth, bids, listings, me, notifications, questions, sale, wants, watchlist
+from app.api.routes import auth, bids, listings, me, notifications, pricing, questions, sale, wants, watchlist
 from app.core.clock import utcnow
 from app.core.config import settings
 from app.core.middleware import SecurityMiddleware
 from app.db.session import SessionLocal, init_db
-from app.services.closer import run_closer
+from app.services.closer import run_closer, run_mail_sender
 from app.api.routes import assistant  # the AI assistant (kept apart so it can be committed on its own)
 
 
@@ -43,14 +43,16 @@ async def lifespan(_app: FastAPI):
 
         backfill_image_fingerprints(db)  # photos from before duplicate detection get their fingerprint
     Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
-    closer = None
+    closer = sender = None
     if settings.closer_interval_seconds > 0:
         closer = asyncio.create_task(run_closer(SessionLocal, settings.closer_interval_seconds))
+        sender = asyncio.create_task(run_mail_sender(SessionLocal))
     yield
-    if closer is not None:
-        closer.cancel()
-        with suppress(asyncio.CancelledError):
-            await closer
+    for task in (closer, sender):
+        if task is not None:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
 
 
 # The interactive docs/schema are for development; a deployed server shouldn't advertise its whole API surface.
@@ -75,6 +77,7 @@ app.include_router(notifications.router)
 app.include_router(me.router)
 app.include_router(watchlist.router)
 app.include_router(wants.router)
+app.include_router(pricing.router)
 app.include_router(questions.router)
 
 

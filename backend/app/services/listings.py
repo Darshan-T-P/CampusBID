@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.clock import utcnow
 from app.core.config import settings
-from app.models import Bid, Category, Condition, Listing, ListingImage, ListingStatus, User
+from app.models import Bid, Category, Condition, Listing, ListingImage, ListingStatus, User, Watch
 from app.schemas.listing import ListingCard, ListingDetail, ListingPage, MyBid, SellerPublic
 from app.services.auction import lock_listing_for_seller, min_valid_bid
 from app.services import wants
@@ -405,6 +405,7 @@ def listing_detail(db: Session, listing: Listing, now: datetime | None = None) -
         handover_spot=listing.handover_spot,
         edited_at=listing.edited_at,
         extension_count=listing.extension_count,
+        watchers=watch_counts(db, [listing.id]).get(listing.id, 0),
         images=[f"/media/{img.path}" for img in listing.images],
         image_ids=[img.id for img in listing.images],
         seller=seller_record(db, listing.seller, now),
@@ -425,7 +426,16 @@ def _escape_like(term: str) -> str:
     return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def _card(listing: Listing, bid_count: int) -> ListingCard:
+def watch_counts(db: Session, listing_ids: list[int]) -> dict[int, int]:
+    """How many students watch each of these auctions (counts only)."""
+    if not listing_ids:
+        return {}
+    return dict(
+        db.execute(select(Watch.listing_id, func.count()).where(Watch.listing_id.in_(listing_ids)).group_by(Watch.listing_id)).all()
+    )
+
+
+def _card(listing: Listing, bid_count: int, watchers: int = 0) -> ListingCard:
     return ListingCard(
         id=listing.id,
         title=listing.title,
@@ -441,6 +451,7 @@ def _card(listing: Listing, bid_count: int) -> ListingCard:
         seller_id=listing.seller_id,
         seller_name=listing.seller.display_name,
         handover_spot=listing.handover_spot,
+        watchers=watchers,
     )
 
 
@@ -503,8 +514,9 @@ def search_listings(
     bid_count = (
         select(func.count()).where(Bid.listing_id == Listing.id).correlate(Listing).scalar_subquery()
     )
+    watching = select(func.count()).where(Watch.listing_id == Listing.id).correlate(Listing).scalar_subquery()
     rows = db.execute(
-        select(Listing, bid_count)
+        select(Listing, bid_count, watching)
         .where(*conditions)
         .order_by(*order_by)
         .limit(limit)
@@ -512,7 +524,7 @@ def search_listings(
         .options(selectinload(Listing.images), joinedload(Listing.seller))
     ).all()
 
-    items = [_card(listing, count) for listing, count in rows]
+    items = [_card(listing, count, watchers) for listing, count, watchers in rows]
     return ListingPage(items=items, total=total, limit=limit, offset=offset, server_time=now)
 
 
@@ -533,12 +545,13 @@ def my_bids(db: Session, user_id: int) -> list[MyBid]:
     counts = dict(
         db.execute(select(Bid.listing_id, func.count()).where(Bid.listing_id.in_(ids)).group_by(Bid.listing_id)).all()
     )
+    watching = watch_counts(db, ids)
     leading_ids = [l.leading_bid_id for l, _ in rows if l.leading_bid_id is not None]
     my_leading = set(
         db.scalars(select(Bid.id).where(Bid.id.in_(leading_ids), Bid.bidder_id == user_id)).all()
     )
     return [
-        MyBid(listing=_card(l, counts.get(l.id, 0)), my_highest_bid=top, is_leading=l.leading_bid_id in my_leading)
+        MyBid(listing=_card(l, counts.get(l.id, 0), watching.get(l.id, 0)), my_highest_bid=top, is_leading=l.leading_bid_id in my_leading)
         for l, top in rows
     ]
 

@@ -36,6 +36,8 @@ public, and only verified campus students can take part.
 - **Duplicate-listing check and open-listing cap.** Posting an item that looks like one of your own open listings (same photo, same title, or a near-identical title in the same category) asks "Is this a second item?" first, and you confirm or go to the existing listing. One student can have at most 20 auctions open at once (`MAX_OPEN_LISTINGS`).
 - **Watchlist and reminders.** Save an auction with the bookmark on a card or the auction page. Saved auctions, and ones you've bid on, send a reminder an hour and five minutes before closing (worded for whether you're leading), and you're told how it ended.
 - **AI assistant.** An Assistant tab where a student can say "find me a cycle under ₹2,000" and get a straight answer from the real open auctions, and ask the app to bid for them. It plays by the same rules as everyone: it never acts without the student's go-ahead (the model has no bidding tool, it can only prepare a confirmation card, and the student's Confirm press makes the normal automatic-bid call), it never goes past the amount the student wrote in the chat (enforced in code, not just in the prompt), and it never sees other students' account details (it is only given public listing facts and the student's own bids). Text inside listings is treated as data, so a listing can't instruct it. Powered by Groq (`GROQ_API_KEY`); switched off when no key is set.
+- **Result emails.** Email goes out only when an auction ends and the sale that follows: the winner is told what they won and for how much, the seller is asked to approve or reject, and once the seller approves each side gets the other's name, number and the handover spot (the same details the app shows then). A rejection tells the winner. Nothing is emailed for bids or outbids. Emails are written in the same transaction as the event and delivered by a separate sender with retries, so none is lost or sent twice. Students can turn them off on their profile.
+- **Price guide and "N watching".** While listing, a seller sees what similar items actually sold for on campus (a range, the typical price, a suggested starting price) once there are at least three comparable sales. Cards and auction pages show how many students are watching, updated live.
 - **Contact numbers.** Students add a mobile number at sign-up (editable on the profile). It is private: it appears in no public view, and only the seller and the winning buyer can fetch each other's number, and only after the seller approves the sale. It shows as a card with Call, WhatsApp and Copy on the auction page, My bids and My listings, and is wiped if the account is deleted.
 - **Notifications.** A bell with an unread badge plus opt-in desktop pop-ups when the tab is in the background: outbid, closing soon, you won or didn't, ended, approved or rejected, cancelled. They are stored records, so a buyer who was offline finds everything they missed, and a Notifications page shows the full history. A one-time banner offers to turn on desktop alerts.
 - **Profile.** A round avatar menu (profile, my listings, my bids, sign out), with Watchlist in the top bar and a profile page with a summary of what you sell and bid on, editable name, department and year, a change-password form (unlocked once the current password is confirmed) that signs out your other devices, and account deletion with a typed confirmation. Deletion is refused while others depend on you (open auctions, a lead on an open auction, a sale in progress); afterwards your data is removed and any bids or listings you made stay in others' histories as "Deleted user".
@@ -146,6 +148,7 @@ Set via environment variables or `backend/.env` (see `backend/.env.example`).
 | `REQUIRED_EMAIL_SUFFIX` | `.edu` | Every registering address must end with this. Empty turns the check off. |
 | `SECRET_KEY` | dev value | Signs login tokens. **Required to be long and random outside dev mode.** |
 | `DEV_MODE` | `false` | Local/demo switch: skips the two requirements above, prints verification codes to the log, serves `/docs`. |
+| `PUBLIC_URL` | `http://localhost:5173` | Where the web app lives, for the links inside emails. |
 | `MAX_OPEN_LISTINGS` | `20` | The most auctions one student can have open at once. |
 | `AUTO_VERIFY` | `false` | Mark new accounts verified immediately (skips the email step). |
 | `EMAIL_BACKEND` | `console` | `smtp` sends real email; `console` sends nothing (in dev mode it prints the message to the log). |
@@ -212,8 +215,8 @@ and are per process. The database file is not encrypted at rest (use disk encryp
 ## Tests
 
 ```bash
-cd backend  && .venv/bin/python -m pytest     # 536 tests: rules, races, automatic bidding, security, auth, email, notifications, seed
-cd frontend && npm test                        # 115 tests: formatting, filters, forms, bid and sign-up logic
+cd backend  && .venv/bin/python -m pytest     # 567 tests: rules, races, automatic bidding, security, auth, email, notifications, seed
+cd frontend && npm test                        # 123 tests: formatting, filters, forms, bid and sign-up logic
 ```
 
 The concurrency tests prove the lock matters: one transaction holds the write lock while an edit or approval waits,
@@ -249,6 +252,7 @@ frontend/src/
 | Assistant | `GET /assistant/status`, `POST /assistant/chat` (it can propose; the student confirms through `PUT /listings/{id}/auto-bid`) |
 | Sale contact | `GET /listings/{id}/contact` (seller and winner only, after approval) |
 | Profile | `PATCH /me`, `POST /me/password`, `POST /me/password/check`, `POST /me/delete` |
+| Price guide | `GET /pricing/suggestion?category=&condition=&title=` (aggregates only) |
 | Alerts (wants) | `GET/POST /me/wants`, `DELETE /me/wants/{id}` |
 | Watchlist | `PUT/DELETE /listings/{id}/watch`, `GET /me/watchlist` |
 | Notifications | `GET /notifications` (`?since_id=` for polling, `?before_id=` for older pages), `POST /notifications/{id}/read`, `/notifications/read-all` |

@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     smtp_timeout: int = 15
     email_from: str = "Relay <no-reply@localhost>"
     password_reset_code_ttl_minutes: int = 15
+    # Where the web app lives, for the links inside emails (e.g. https://relay.example.edu).
+    public_url: str = "http://localhost:5173"
     # --- AI assistant (Groq, an OpenAI-compatible API). Empty key = the assistant is switched off. ------------
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"  # must support tool calling; list what your key can use at /openai/v1/models

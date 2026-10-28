@@ -138,6 +138,11 @@ export function BidPanel({ listing, myBid, myMax = null }) {
           <span className="bid-count-badge">
             <Icon name="trend" size={12} /> {listing.bid_count} {listing.bid_count === 1 ? 'bid' : 'bids'}
           </span>
+          {listing.watchers > 0 && (
+            <span className="bid-count-badge watching-count" title="Students who saved this auction">
+              <Icon name="bookmark" size={12} filled /> {listing.watchers} watching
+            </span>
+          )}
           {hasBids && (
             <span className="leader-badge">
               Leading: <strong>{listing.leading_bidder}</strong>

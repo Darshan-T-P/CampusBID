@@ -36,6 +36,7 @@ class ListingCard(BaseModel):
     seller_id: int
     seller_name: str
     handover_spot: str | None = None
+    watchers: int = 0  # how many students saved it (a count only, never who)
 
 
 class ListingPage(BaseModel):
@@ -88,6 +89,7 @@ class ListingDetail(BaseModel):
     handover_spot: str | None = None  # on-campus handover location
     edited_at: datetime | None  # when the seller last changed the listing, if ever
     extension_count: int  # times a late bid pushed the closing time back; 0 = never
+    watchers: int = 0  # how many students are watching this auction
     images: list[str]  # URLs under /media
     image_ids: list[int]  # the same photos' ids, in the same order (needed to remove one)
     seller: SellerPublic

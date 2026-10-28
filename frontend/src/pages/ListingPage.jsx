@@ -90,7 +90,6 @@ export function ListingPage() {
   const lastMarker = useRef(null)
   useEffect(() => {
     if (marker !== null && lastMarker.current !== null && lastMarker.current !== marker) {
-      queryClient.invalidateQueries({ queryKey: ['bids', id] })
       queryClient.invalidateQueries({ queryKey: ['my-bids'] })
       queryClient.invalidateQueries({ queryKey: ['auto-bids', id] })
     }

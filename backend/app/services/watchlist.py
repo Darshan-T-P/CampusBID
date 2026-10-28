@@ -59,13 +59,14 @@ def unwatch(db: Session, listing_id: int, user_id: int) -> None:
 def my_watchlist(db: Session, user_id: int) -> list[ListingCard]:
     """Saved auctions: open ones first (closing soonest at the top), then ended ones, most recent first."""
     bid_count = select(func.count()).where(Bid.listing_id == Listing.id).correlate(Listing).scalar_subquery()
+    watching = select(func.count()).where(Watch.listing_id == Listing.id).correlate(Listing).scalar_subquery()
     rows = db.execute(
-        select(Listing, bid_count)
+        select(Listing, bid_count, watching)
         .join(Watch, Watch.listing_id == Listing.id)
         .where(Watch.user_id == user_id)
         .options(selectinload(Listing.images), joinedload(Listing.seller))
     ).all()
-    cards = [_card(listing, count) for listing, count in rows]
+    cards = [_card(listing, count, watchers) for listing, count, watchers in rows]
     open_ = sorted((c for c in cards if c.status == ListingStatus.active), key=lambda c: c.closes_at)
     ended = sorted((c for c in cards if c.status != ListingStatus.active), key=lambda c: c.closes_at, reverse=True)
     return open_ + ended

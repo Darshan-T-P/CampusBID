@@ -15,9 +15,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
+from app.core.config import settings
 from app.models import Listing, ListingStatus, User
 from app.schemas.sale import ContactInfo
-from app.services import notifications
+from app.services import mailer, notifications, outbox
 from app.services.auction import begin_write, close_if_due
 from app.services.errors import ListingError
 
@@ -42,6 +43,7 @@ def _transition(
     note: Callable[[Listing], str],
     event: tuple[str, str, Callable[[Listing], str]],
     now: datetime | None = None,
+    extra: Callable[[Session, Listing, datetime], None] | None = None,
 ) -> Listing:
     """`note` builds the public outcome text; `event` is (notification type, title, body builder)
     for the message the winner receives."""
@@ -62,11 +64,44 @@ def _transition(
         listing.outcome_note = note(listing)
         kind, title, body = event
         notifications.sale_step(db, listing, user_id, kind, f"{title}: {listing.title}", body(listing))
+        if extra is not None:
+            extra(db, listing, now)  # e.g. queue emails, in the same transaction
         db.commit()
         return listing
     except BaseException:
         db.rollback()
         raise
+
+
+def _url(listing: Listing) -> str:
+    return f"{settings.public_url.rstrip('/')}/listings/{listing.id}"
+
+
+def _email_contacts(db: Session, listing: Listing, now: datetime) -> None:
+    """The sale is approved: each side is emailed the other's contact details (the same ones the app now shows them)."""
+    winner = db.get(User, notifications.winner_id(db, listing))
+    seller = db.get(User, listing.seller_id)
+    if winner is None:
+        return
+    outbox.queue_email(
+        db, winner,
+        mailer.sale_approved_buyer_email(listing.title, listing.current_price, seller.display_name, seller.phone, listing.handover_spot, _url(listing)), now,
+    )
+    outbox.queue_email(
+        db, seller,
+        mailer.sale_approved_seller_email(
+            listing.title, listing.current_price, winner.display_name, winner.phone, listing.handover_spot,
+            f"{settings.public_url.rstrip('/')}/my/listings",
+        ), now,
+    )
+
+
+def _email_rejection(note: str):
+    def queue(db: Session, listing: Listing, now: datetime) -> None:
+        winner = db.get(User, notifications.winner_id(db, listing))
+        outbox.queue_email(db, winner, mailer.sale_rejected_email(listing.title, note + ".", f"{settings.public_url.rstrip('/')}/"), now)
+
+    return queue
 
 
 def approve(db: Session, listing_id: int, user_id: int, now: datetime | None = None) -> Listing:
@@ -75,7 +110,7 @@ def approve(db: Session, listing_id: int, user_id: int, now: datetime | None = N
         lambda l: f"Approved by the seller at ₹{l.current_price:,}; awaiting handover" + (f" at {l.handover_spot}" if l.handover_spot else ""),
         ("approved", "Sale approved", lambda l: f"The seller approved your bid of ₹{l.current_price}. "
             + (f"Meet at {l.handover_spot} to hand over the item." if l.handover_spot else "Arrange the handover with the seller.")
-            + " Open the listing to see the seller's contact number."), now,
+            + " Open the listing to see the seller's contact number."), now, _email_contacts,
     )
 
 
@@ -88,7 +123,7 @@ def reject(
     return _transition(
         db, listing_id, user_id, ListingStatus.pending_approval, ListingStatus.rejected,
         lambda _l: note,
-        ("rejected", "Sale rejected", lambda _l: note + "."), now,
+        ("rejected", "Sale rejected", lambda _l: note + "."), now, _email_rejection(note),
     )
 
 

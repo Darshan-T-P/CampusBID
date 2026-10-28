@@ -23,6 +23,7 @@ function Row({ listing, notice, onNotice }) {
     enabled: hasWinner,
   })
   const d = detail.data
+  const queryClient = useQueryClient()
 
   const cancelMutation = useMutation({
     mutationFn: () => api(`/listings/${listing.id}/cancel`, { method: 'POST' }),

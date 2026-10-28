@@ -80,6 +80,7 @@ function EditProfile({ user }) {
     department: user.department ?? '',
     year: user.year_of_study ? String(user.year_of_study) : '',
     phone: user.phone ? formatPhone(user.phone) : '',
+    notifyByEmail: user.notify_by_email ?? true,
   })
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState(null)
@@ -141,6 +142,18 @@ function EditProfile({ user }) {
             {errors.phone ? <small className="field-error" role="alert">{errors.phone}</small> : <small className="muted">Private. Shared only with the other person in a sale, after the seller approves it. Leave blank to remove it.</small>}
           </div>
         </div>
+        <label className="check-row" htmlFor="p-notify">
+          <input
+            id="p-notify"
+            type="checkbox"
+            checked={values.notifyByEmail}
+            onChange={(e) => { setValues((v) => ({ ...v, notifyByEmail: e.target.checked })); setNotice(null) }}
+          />
+          <span>
+            Email me about results
+            <small className="muted">When I win an auction, when my auction ends, and when a sale is approved or turned down. Nothing else.</small>
+          </span>
+        </label>
         <div className="form-field">
           <label htmlFor="p-email">Campus email</label>
           <input id="p-email" value={user.email} readOnly disabled />

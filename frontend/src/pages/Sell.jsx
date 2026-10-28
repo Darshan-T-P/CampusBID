@@ -6,6 +6,7 @@ import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
 import { Icon } from '../components/Icon'
 import { PhotoPicker } from '../components/PhotoPicker'
+import { PriceSuggestion } from '../components/PriceSuggestion'
 import { CATEGORIES, CONDITIONS, categoryLabel, conditionLabel, formatRemaining, formatRupees } from '../lib/format'
 import { parseAmount } from '../lib/bidding'
 import {
@@ -266,6 +267,12 @@ export function Sell() {
               <h2 id="s-price">Price and timing</h2>
               <p className="muted small">Bidding starts at your price and rises by at least the minimum raise.</p>
             </div>
+            <PriceSuggestion
+              category={values.category}
+              condition={values.condition}
+              title={values.title}
+              onUse={(amount) => setValues((v) => ({ ...v, startingPrice: String(amount) }))}
+            />
             <div className="form-row">
               <label>
                 Starting price (₹)
@@ -382,7 +389,7 @@ export function Sell() {
               Cancel
             </Link>
             <button className="btn btn-primary" disabled={publish.isPending || !verified}>
-              {publish.isPending ? 'Publishing…' : 'Publish listing'}
+              { 'Publish listing'}
             </button>
           </div>
         </form>

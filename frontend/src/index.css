@@ -4592,3 +4592,62 @@ main:focus {
 .alerts-prompt-inner span {
   flex: 1 1 280px;
 }
+
+/* --- Price guide on the Sell page, "N watching", and the results-email switch --- */
+.price-hint {
+  margin: 0;
+}
+
+.price-hint-found {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius-md);
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.price-hint-found > div {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.price-hint-found span {
+  color: #334155;
+}
+
+.watching-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #1d4ed8;
+}
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.check-row input {
+  margin-top: 4px;
+  width: auto;
+}
+
+.check-row span {
+  display: grid;
+  gap: 2px;
+}
+
+@media (max-width: 560px) {
+  .price-hint-found {
+    flex-wrap: wrap;
+  }
+}

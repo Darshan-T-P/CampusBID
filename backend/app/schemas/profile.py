@@ -10,6 +10,7 @@ class ProfileUpdate(BaseModel):
     department: str | None = Field(default=None, max_length=80)
     year_of_study: int | None = Field(default=None, ge=1, le=6)
     phone: str | None = Field(default=None, max_length=30)  # blank removes it
+    notify_by_email: bool | None = None  # emails about how auctions and sales turn out
 
     @field_validator("phone")
     @classmethod

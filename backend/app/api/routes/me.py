@@ -64,6 +64,8 @@ def update_profile(body: ProfileUpdate, user: CurrentUser, db: DbSession):
         user.department = (changes["department"] or "").strip() or None
     if "year_of_study" in changes:
         user.year_of_study = changes["year_of_study"]
+    if changes.get("notify_by_email") is not None:
+        user.notify_by_email = changes["notify_by_email"]
     if "phone" in changes:
         user.phone = changes["phone"]  # already normalised (or None to remove it) by the schema
     db.commit()

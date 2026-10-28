@@ -56,3 +56,19 @@ describe('memberSince', () => {
     expect(memberSince('2026-10-28T10:00:00Z')).toMatch(/2026/)
   })
 })
+
+describe('profileChanges and the results-email switch', () => {
+  const user = { display_name: 'Asha', department: null, year_of_study: null, phone: null, notify_by_email: true }
+  const same = { displayName: 'Asha', department: '', year: '', phone: '' }
+  it('sends nothing when the switch is untouched or not part of the form', () => {
+    expect(profileChanges(user, same)).toEqual({})
+    expect(profileChanges(user, { ...same, notifyByEmail: true })).toEqual({})
+  })
+  it('sends the new value when it is flipped, in both directions', () => {
+    expect(profileChanges(user, { ...same, notifyByEmail: false })).toEqual({ notify_by_email: false })
+    expect(profileChanges({ ...user, notify_by_email: false }, { ...same, notifyByEmail: true })).toEqual({ notify_by_email: true })
+  })
+  it('treats an older profile without the field as "on"', () => {
+    expect(profileChanges({ ...user, notify_by_email: undefined }, { ...same, notifyByEmail: true })).toEqual({})
+  })
+})

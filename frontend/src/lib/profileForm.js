@@ -23,6 +23,7 @@ export function profileChanges(user, v) {
   if (year !== (user.year_of_study ?? null)) changes.year_of_study = year
   const phone = (v.phone ?? '').trim() === '' ? null : normalizePhone(v.phone)
   if (phone !== (user.phone ?? null)) changes.phone = phone
+  if (v.notifyByEmail !== undefined && v.notifyByEmail !== (user.notify_by_email ?? true)) changes.notify_by_email = v.notifyByEmail
   return changes
 }
 

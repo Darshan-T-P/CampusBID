@@ -42,6 +42,7 @@ class UserMe(BaseModel):
     department: str | None = None
     year_of_study: int | None = None
     phone: str | None = None  # the caller's own number; nobody else ever gets it from here
+    notify_by_email: bool = True
     is_verified: bool
     created_at: datetime
 

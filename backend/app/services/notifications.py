@@ -11,7 +11,9 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
+from app.core.config import settings
 from app.models import Bid, Listing, Notification, User, Watch
+from app.services import mailer, outbox
 
 
 def notify(
@@ -92,6 +94,14 @@ def auction_closed(db: Session, listing: Listing, now: datetime) -> None:
         )
         return
     winner_name = db.scalar(select(User.display_name).where(User.id == winner))
+    # The emails that matter: the winner is told what they won and for how much; the seller is asked to decide.
+    url = f"{settings.public_url.rstrip('/')}/listings/{listing.id}"
+    seller = db.get(User, listing.seller_id)
+    outbox.queue_email(
+        db, db.get(User, winner),
+        mailer.auction_won_email(listing.title, listing.current_price, seller.display_name, listing.handover_spot, url), now,
+    )
+    outbox.queue_email(db, seller, mailer.auction_ended_seller_email(listing.title, listing.current_price, winner_name, url), now)
     notify(
         db, winner, "won", f"You won {listing.title}",
         f"Your bid of ₹{listing.current_price} is the highest. It's provisional until the seller approves.",

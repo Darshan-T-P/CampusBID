@@ -222,7 +222,7 @@ def _time_left(closes_at: datetime, now: datetime) -> str:
 
 def _card_for(db: Session, listing: Listing) -> ListingCard:
     bids = db.scalar(select(func.count()).select_from(Bid).where(Bid.listing_id == listing.id))
-    return listing_service._card(listing, bids)
+    return listing_service._card(listing, bids, listing_service.watch_counts(db, [listing.id]).get(listing.id, 0))
 
 
 def _as_int(value) -> int | None:

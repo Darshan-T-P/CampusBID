@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import utcnow
 from app.core.events import broadcaster
 from app.services.auction import close_due_listings, has_due_listings
+from app.services.outbox import has_pending, send_pending
 from app.services.watchlist import send_due_reminders
 
 logger = logging.getLogger("campusbid.closer")
@@ -43,4 +44,23 @@ async def run_closer(session_factory: Callable[[], Session], interval: float) ->
             await asyncio.to_thread(sweep_once, session_factory)
         except Exception:
             logger.exception("Closer sweep failed; will retry")
+        await asyncio.sleep(interval)
+
+
+def send_emails_once(session_factory: Callable[[], Session], now: datetime | None = None) -> tuple[int, int]:
+    """Deliver any emails that are waiting (sent, failed). Cheap when there are none."""
+    now = now or utcnow()
+    with session_factory() as db:
+        if not has_pending(db, now):
+            return 0, 0
+        return send_pending(db, now)
+
+
+async def run_mail_sender(session_factory: Callable[[], Session], interval: float = 5.0) -> None:
+    """Deliver outbox emails forever. Separate from the closer so a slow mail server can never delay closing an auction."""
+    while True:
+        try:
+            await asyncio.to_thread(send_emails_once, session_factory)
+        except Exception:
+            logger.exception("Email sender failed; will retry")
         await asyncio.sleep(interval)
