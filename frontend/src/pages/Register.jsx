@@ -9,7 +9,7 @@ import { DEPARTMENTS, REQUIRED_EMAIL_SUFFIX, passwordStrength, validateRegistrat
 const EMPTY = { email: '', displayName: '', year: '', department: '', password: '', confirm: '' }
 
 export function Register() {
-  const { register, isSignedIn } = useAuth()
+  const { register, isSignedIn, user, loading } = useAuth()
   const navigate = useNavigate()
 
   const [values, setValues] = useState(EMPTY)
@@ -18,7 +18,8 @@ export function Register() {
   const [serverError, setServerError] = useState(null)
   const [busy, setBusy] = useState(false)
 
-  if (isSignedIn) return <Navigate to="/" replace />
+  // Signing in flips isSignedIn before onSubmit navigates, so wait for the profile and route by verification.
+  if (isSignedIn) return loading ? null : <Navigate to={user && !user.is_verified ? '/verify' : '/'} replace />
 
   const set = (name) => (event) => setValues((v) => ({ ...v, [name]: event.target.value }))
   const blur = (name) => () => setTouched((t) => ({ ...t, [name]: true }))

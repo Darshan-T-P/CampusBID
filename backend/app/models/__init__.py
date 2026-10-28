@@ -3,6 +3,7 @@ from app.models.bid import Bid
 from app.models.email_verification import EmailVerification
 from app.models.listing import Category, Condition, Listing, ListingImage, ListingStatus
 from app.models.notification import Notification
+from app.models.password_reset import PasswordReset
 from app.models.user import User
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     "ListingImage",
     "ListingStatus",
     "Notification",
+    "PasswordReset",
     "User",
 ]

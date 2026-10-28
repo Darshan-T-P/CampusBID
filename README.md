@@ -8,7 +8,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-319%20backend%20%2B%2083%20frontend-brightgreen)
+![Tests](https://img.shields.io/badge/tests-356%20backend%20%2B%2088%20frontend-brightgreen)
 
 </div>
 
@@ -125,12 +125,31 @@ Set via environment variables or `backend/.env` (see `backend/.env.example`).
 | `SECRET_KEY` | dev value | Signs login tokens. **Required to be long and random outside dev mode.** |
 | `DEV_MODE` | `false` | Local/demo switch: skips the two requirements above, prints verification codes to the log, serves `/docs`. |
 | `AUTO_VERIFY` | `false` | Mark new accounts verified immediately (skips the email step). |
+| `EMAIL_BACKEND` | `console` | `smtp` sends real email; `console` sends nothing (in dev mode it prints the message to the log). |
+| `EMAIL_FROM` | `Relay <no-reply@localhost>` | The sender shown on every email. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | port `587` | Your mail provider's SMTP details. |
+| `SMTP_STARTTLS`, `SMTP_SSL` | `true`, `false` | Port 587 upgrades with STARTTLS; for port 465 use `SMTP_SSL=true`. |
 | `DATABASE_URL` | `sqlite:///./campusbid.db` | Database location. |
 | `CORS_ORIGINS` | localhost dev origins | Browser origins allowed to call the API directly. |
 | `MAX_REQUEST_BYTES` | 30 MB | Larger requests are refused with 413. |
 | `CLOSER_INTERVAL_SECONDS` | `1` | How often expired auctions are closed; `0` disables the closer. |
 
-No email service is wired up yet, so verification codes only appear in the server log (dev mode).
+### Email
+
+Verification codes and password-reset codes are sent by SMTP, so any provider works (Gmail with an app password, Brevo,
+Resend, Mailgun, your college's relay). Mail is sent after the response, so a slow mail server never slows a request.
+Outside dev mode the app refuses to start with email unconfigured (unless `AUTO_VERIFY=true`). Check your settings with:
+
+```bash
+cd backend && .venv/bin/python scripts/send_test_email.py you@example.com
+```
+
+Mail from a brand-new sender can land in spam; for a real deployment send from a domain you control and add its SPF and
+DKIM records (your provider shows them). Codes are never written to logs outside dev mode.
+
+**Forgot password.** `/forgot-password` emails a 6-digit code (15 minutes, five tries); entering it with a new password signs
+the person in, signs out every other session, and emails a "your password was changed" notice. The reply never reveals
+whether an address has an account.
 
 ## The rules
 
@@ -160,7 +179,7 @@ No email service is wired up yet, so verification codes only appear in the serve
 | Dependencies | `pip-audit` and `npm audit` report no known vulnerabilities |
 
 **Before deploying:** serve over HTTPS (tokens travel in headers), set a real `SECRET_KEY` and `ALLOWED_EMAIL_DOMAINS`,
-turn `DEV_MODE` and `AUTO_VERIFY` off, wire up email delivery, and put the rate limiter behind a proxy that passes the
+turn `DEV_MODE` and `AUTO_VERIFY` off, configure SMTP email, and put the rate limiter behind a proxy that passes the
 real client address.
 
 **Known limits.** Registering reveals whether an email is already taken (rate limited). Login tokens live in the
@@ -170,8 +189,8 @@ and are per process. The database file is not encrypted at rest (use disk encryp
 ## Tests
 
 ```bash
-cd backend  && .venv/bin/python -m pytest     # 319 tests: rules, races, automatic bidding, security, auth, notifications, seed
-cd frontend && npm test                        # 83 tests: formatting, filters, forms, bid and sign-up logic
+cd backend  && .venv/bin/python -m pytest     # 356 tests: rules, races, automatic bidding, security, auth, email, notifications, seed
+cd frontend && npm test                        # 88 tests: formatting, filters, forms, bid and sign-up logic
 ```
 
 The concurrency tests prove the lock matters: one transaction holds the write lock while an edit or approval waits,
@@ -198,7 +217,7 @@ frontend/src/
 
 | Area | Endpoints |
 |---|---|
-| Accounts | `POST /auth/register`, `/auth/login`, `/auth/verify`, `/auth/resend-code`; `GET /me` |
+| Accounts | `POST /auth/register`, `/auth/login`, `/auth/verify`, `/auth/resend-code`, `/auth/forgot-password`, `/auth/reset-password`; `GET /me` |
 | Listings | `GET/POST /listings`, `GET/PATCH /listings/{id}`, `POST /listings/{id}/cancel`, `POST/DELETE /listings/{id}/images` |
 | Bids | `POST/GET /listings/{id}/bids` |
 | Automatic bidding | `PUT/DELETE /listings/{id}/auto-bid`, `GET /listings/{id}/auto-bids` (public), `GET /me/auto-bids` |
@@ -223,5 +242,4 @@ new columns to an existing database (it never drops or changes data). Renaming o
 
 - Duplicate-listing protection (double-submit key, same-photo detection, open-listing cap)
 - Admin role (suspend users, remove listings, audit log)
-- Email delivery for verification codes
 - Optional extras: saved wants, per-auction Q&A, an AI assistant

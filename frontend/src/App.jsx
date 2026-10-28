@@ -4,6 +4,7 @@ import { Layout } from './components/Layout'
 import { Browse } from './pages/Browse'
 import { ListingPage } from './pages/ListingPage'
 import { EditListing } from './pages/EditListing'
+import { ForgotPassword } from './pages/ForgotPassword'
 import { Login } from './pages/Login'
 import { MyBids } from './pages/MyBids'
 import { MyListings } from './pages/MyListings'
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="listings/:id" element={<ListingPage />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
+        <Route path="forgot-password" element={<ForgotPassword />} />
         {/* Signed-in only. Pages for selling and bidding will live here. */}
         <Route element={<RequireAuth />}>
           <Route path="sell" element={<Sell />} />

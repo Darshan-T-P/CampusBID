@@ -7,3 +7,4 @@ pyjwt>=2.9
 python-multipart>=0.0.9
 pytest>=8.0
 httpx>=0.27
+aiosmtpd>=1.4  # tests: a real local SMTP server to send to

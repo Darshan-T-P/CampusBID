@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
@@ -12,6 +12,7 @@ from app.schemas.auth import TokenResponse, UserMe
 from app.schemas.bid import MyAutoBid
 from app.schemas.listing import ListingPage, MyBid
 from app.schemas.profile import PasswordChange, ProfileSummary, ProfileUpdate
+from app.services import accounts
 from app.services import listings as listing_service
 from app.services import profile as profile_service
 
@@ -67,7 +68,7 @@ def update_profile(body: ProfileUpdate, user: CurrentUser, db: DbSession):
 
 
 @router.post("/password", response_model=TokenResponse)
-def change_password(body: PasswordChange, user: CurrentUser, db: DbSession):
+def change_password(body: PasswordChange, user: CurrentUser, background: BackgroundTasks, db: DbSession):
     """Change my password. Needs the current one; every other device is signed out, and I get a fresh token."""
     enforce(f"password:user:{user.id}", limit=10, window=600)  # slows guessing the current password
     if not verify_password(body.current_password, user.password_hash):
@@ -77,6 +78,7 @@ def change_password(body: PasswordChange, user: CurrentUser, db: DbSession):
     user.password_hash = hash_password(body.new_password)
     user.password_changed_at = utcnow()
     db.commit()
+    background.add_task(accounts.deliver_password_changed, user.email)
     return TokenResponse(access_token=create_access_token(user.id), is_verified=user.is_verified)
 
 

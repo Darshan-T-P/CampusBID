@@ -5,7 +5,7 @@ import { useAuth } from '../auth/useAuth'
 import { PasswordField } from '../components/PasswordField'
 
 export function Login() {
-  const { login, isSignedIn } = useAuth()
+  const { login, isSignedIn, user, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const from = location.state?.from ?? '/'
@@ -15,7 +15,8 @@ export function Login() {
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
-  if (isSignedIn) return <Navigate to={from} replace />
+  // Signing in flips isSignedIn before onSubmit navigates, so wait for the profile and route by verification.
+  if (isSignedIn) return loading ? null : <Navigate to={user && !user.is_verified ? '/verify' : from} replace />
 
   async function onSubmit(event) {
     event.preventDefault()
@@ -54,6 +55,9 @@ export function Login() {
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+      <p className="muted">
+        <Link to="/forgot-password">Forgot your password?</Link>
+      </p>
       <p className="muted">
         New here? <Link to="/register">Create an account</Link>
       </p>

@@ -42,6 +42,9 @@ export function AuthProvider({ children }) {
     [applyToken],
   )
 
+  // For flows that hand back a ready token (password reset signs the person in).
+  const signInWithToken = useCallback((next) => applyToken(next), [applyToken])
+
   const register = useCallback(
     async (email, displayName, password, profile = {}) => {
       const result = await api('/auth/register', {
@@ -83,12 +86,13 @@ export function AuthProvider({ children }) {
       isSignedIn: token !== null,
       login,
       register,
+      signInWithToken,
       logout,
       refreshUser,
       updateProfile,
       changePassword,
     }),
-    [token, meQuery.data, meQuery.isPending, login, register, logout, refreshUser, updateProfile, changePassword],
+    [token, meQuery.data, meQuery.isPending, login, register, signInWithToken, logout, refreshUser, updateProfile, changePassword],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

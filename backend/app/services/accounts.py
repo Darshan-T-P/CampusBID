@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
 from app.core.config import settings
-from app.models import EmailVerification, User
+from app.core.security import hash_password
+from app.models import EmailVerification, PasswordReset, User
+from app.services import mailer
 from app.services.errors import AccountError
 
 logger = logging.getLogger("campusbid.accounts")
@@ -55,25 +57,41 @@ def check_registration_email(email: str) -> str:
 # --- verification codes -----------------------------------------------------
 
 
-def _hash_code(user_id: int, code: str) -> str:
-    # Keyed hash: a leaked database row can't be reversed into a code without the secret.
-    return hmac.new(settings.secret_key.encode(), f"{user_id}:{code}".encode(), hashlib.sha256).hexdigest()
+def _hash_code(user_id: int, code: str, purpose: str = "verify") -> str:
+    # Keyed hash: a leaked database row can't be reversed into a code without the secret. The purpose is part of
+    # the input, so a code emailed for verifying an address can never be replayed to reset a password.
+    return hmac.new(settings.secret_key.encode(), f"{purpose}:{user_id}:{code}".encode(), hashlib.sha256).hexdigest()
+
+
+def _deliver(email: str, message: tuple[str, str, str]) -> None:
+    """Send one message. Never raises: it runs after the response was already sent, so a failure is logged
+    (without any code) and the person can simply ask again."""
+    subject, text, page = message
+    try:
+        mailer.send_email(email, subject, text, page)
+    except mailer.EmailError as e:
+        logger.error("Could not email %s: %s", email, e)
+    except Exception:  # noqa: BLE001 - a background task must not crash the worker
+        logger.exception("Unexpected error while emailing %s", email)
 
 
 def deliver_code(email: str, code: str) -> None:
-    """Hand the code to the user. There is no email transport yet.
-
-    In dev/demo mode the code is printed to the server log so anyone can try the flow.
-    A real deployment would send an email here.
-    """
-    if settings.dev_mode:
-        logger.warning("[DEV] Verification code for %s: %s", email, code)
-    else:
-        logger.warning("No email transport configured; could not send a code to %s", email)
+    """Email the address-verification code."""
+    _deliver(email, mailer.verification_email(code, settings.verification_code_ttl_minutes))
 
 
-def issue_code(db: Session, user: User, now: datetime | None = None) -> None:
-    """Create (or replace) the user's verification code and deliver it."""
+def deliver_reset_code(email: str, code: str) -> None:
+    """Email the password-reset code."""
+    _deliver(email, mailer.password_reset_email(code, settings.password_reset_code_ttl_minutes))
+
+
+def deliver_password_changed(email: str) -> None:
+    """Tell the owner their password changed, so a change they didn't make is noticed quickly."""
+    _deliver(email, mailer.password_changed_email())
+
+
+def issue_code(db: Session, user: User, now: datetime | None = None) -> str:
+    """Create (or replace) the user's verification code and return it for delivery (the caller emails it)."""
     now = now or utcnow()
     record = db.get(EmailVerification, user.id)
     if record is not None:
@@ -90,7 +108,7 @@ def issue_code(db: Session, user: User, now: datetime | None = None) -> None:
     record.attempts = 0
     record.sent_at = now
     db.commit()
-    deliver_code(user.email, code)
+    return code
 
 
 def verify_code(db: Session, user: User, code: str, now: datetime | None = None) -> None:
@@ -112,5 +130,52 @@ def verify_code(db: Session, user: User, code: str, now: datetime | None = None)
         raise AccountError(f"Incorrect code. {left} attempt(s) left.")
 
     user.is_verified = True
+    db.delete(record)
+    db.commit()
+
+
+# --- forgotten password -----------------------------------------------------
+
+_INVALID_RESET = "That code is invalid or has expired. Request a new one."
+
+
+def issue_reset_code(db: Session, user: User, now: datetime | None = None) -> str | None:
+    """A fresh reset code, or None if one was sent a moment ago.
+
+    It does not raise on the cooldown: the endpoint must answer exactly the same whether or not it sent anything,
+    so the response can't be used to find out which emails have accounts.
+    """
+    now = now or utcnow()
+    record = db.get(PasswordReset, user.id)
+    if record is not None and (now - record.sent_at).total_seconds() < settings.verification_resend_cooldown_seconds:
+        return None
+    if record is None:
+        record = PasswordReset(user_id=user.id)
+        db.add(record)
+    code = f"{secrets.randbelow(10**6):06d}"
+    record.code_hash = _hash_code(user.id, code, "reset")
+    record.expires_at = now + timedelta(minutes=settings.password_reset_code_ttl_minutes)
+    record.attempts = 0
+    record.sent_at = now
+    db.commit()
+    return code
+
+
+def reset_password(db: Session, user: User, code: str, new_password: str, now: datetime | None = None) -> None:
+    """Set a new password using an emailed code. Every failure that could hint at an account says the same thing."""
+    now = now or utcnow()
+    record = db.get(PasswordReset, user.id)
+    if record is None or now >= record.expires_at:
+        raise AccountError(_INVALID_RESET)
+    if record.attempts >= settings.verification_max_attempts:
+        raise AccountError("Too many wrong attempts. Request a new code.", "rate_limited")
+    if not hmac.compare_digest(record.code_hash, _hash_code(user.id, code, "reset")):
+        record.attempts += 1
+        db.commit()
+        raise AccountError(_INVALID_RESET)
+
+    user.password_hash = hash_password(new_password)
+    user.password_changed_at = now  # every older login token stops working
+    user.is_verified = True  # they just proved they control this inbox
     db.delete(record)
     db.commit()

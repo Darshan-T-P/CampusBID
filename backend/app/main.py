@@ -21,6 +21,11 @@ def check_startup_settings() -> None:
             "ALLOWED_EMAIL_DOMAINS is required (e.g. college.edu). "
             "Set DEV_MODE=true to run without it for local development."
         )
+    if not settings.dev_mode and not settings.auto_verify and not settings.smtp_ready:
+        raise RuntimeError(
+            "Email is not configured, so nobody could verify their address. Set EMAIL_BACKEND=smtp with SMTP_HOST and "
+            "EMAIL_FROM (see backend/.env.example), or set DEV_MODE=true / AUTO_VERIFY=true for local use."
+        )
     if settings.secret_key_is_weak and not settings.dev_mode:
         raise RuntimeError(
             "SECRET_KEY is missing, too short (< 32 chars) or still a placeholder. Anyone could forge login tokens. "

@@ -23,6 +23,19 @@ class Settings(BaseSettings):
     allowed_email_domains: str = ""
     # Every registering email must end with this (institutional addresses). Empty disables the check.
     required_email_suffix: str = ".edu"
+    # --- Email (verification codes, password reset) ---------------------------------------------------
+    # "console": nothing is sent; in dev mode the code is printed to the server log.
+    # "smtp": real email through any SMTP provider (Gmail, Brevo, Resend, Mailgun, ...).
+    email_backend: str = "console"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_starttls: bool = True  # upgrade a plain connection to TLS (port 587)
+    smtp_ssl: bool = False  # TLS from the first byte (port 465); turn starttls off if you use this
+    smtp_timeout: int = 15
+    email_from: str = "Relay <no-reply@localhost>"
+    password_reset_code_ttl_minutes: int = 15
     # Demo/dev switch: relaxes the domain requirement and prints verification codes to the log.
     dev_mode: bool = False
     # Skip the email step and mark new accounts verified (demos, local testing).
@@ -32,6 +45,10 @@ class Settings(BaseSettings):
     verification_resend_cooldown_seconds: int = 60
     rate_limit_enabled: bool = True
 
+
+    @property
+    def smtp_ready(self) -> bool:
+        return self.email_backend == "smtp" and bool(self.smtp_host.strip()) and bool(self.email_from.strip())
 
     @property
     def cors_origin_list(self) -> list[str]:

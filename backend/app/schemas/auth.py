@@ -39,3 +39,13 @@ class UserMe(BaseModel):
 
 class VerifyRequest(BaseModel):
     code: str = Field(pattern=r"^\d{6}$", description="The 6-digit code from your email")
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(pattern=r"^\d{6}$", description="The 6-digit code from the email")
+    new_password: str = Field(min_length=8, max_length=128)
