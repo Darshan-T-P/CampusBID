@@ -24,3 +24,25 @@ class BidResult(BaseModel):
 
     bid: BidPublic
     listing: ListingDetail
+
+
+class AutoBidCreate(BaseModel):
+    max_amount: int = Field(ge=1, le=MAX_PRICE, description="The most you are willing to pay, whole rupees")
+
+
+class AutoBidPublic(BaseModel):
+    """A standing maximum. Public by design: nothing about bidding is private."""
+
+    bidder_name: str
+    max_amount: int
+    set_at: datetime
+
+
+class AutoBidResult(BaseModel):
+    auto_bid: AutoBidPublic
+    listing: ListingDetail
+
+
+class MyAutoBid(BaseModel):
+    listing_id: int
+    max_amount: int

@@ -44,6 +44,9 @@ def domain_allowed(email: str) -> bool:
 def check_registration_email(email: str) -> str:
     """Normalize and enforce the campus-domain rule. Returns the canonical email."""
     email = normalize_email(email)
+    suffix = settings.required_email_suffix.strip().lower()
+    if suffix and not email.endswith(suffix):
+        raise AccountError(f"Please use your campus email address (it ends in {suffix})")
     if not domain_allowed(email):
         raise AccountError("Please use your campus email address")
     return email

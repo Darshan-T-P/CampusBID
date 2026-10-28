@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import { ApiError, api } from '../api/client'
 import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
+import { AutoBidList } from '../components/AutoBidList'
 import { BidHistory } from '../components/BidHistory'
 import { BidPanel } from '../components/BidPanel'
 import { ImageGallery } from '../components/ImageGallery'
@@ -41,6 +42,21 @@ export function ListingPage() {
   })
   const myBid = myBidsQuery.data?.find((row) => row.listing.id === Number(id))
 
+  // Automatic bidding: my own maximum, and everyone's (public). Maximums can change without a bid being
+  // placed, so while the auction is open these are checked a little more often than the history.
+  const myAutoQuery = useQuery({
+    queryKey: ['my-auto-bids'],
+    queryFn: () => api('/me/auto-bids'),
+    enabled: isSignedIn && listing !== undefined,
+  })
+  const myMax = myAutoQuery.data?.find((row) => row.listing_id === Number(id))?.max_amount ?? null
+  const autoBidsQuery = useQuery({
+    queryKey: ['auto-bids', id],
+    queryFn: () => api(`/listings/${id}/auto-bids`),
+    enabled: listing !== undefined,
+    refetchInterval: isOpen ? 5000 : false,
+  })
+
   // Someone bid (or the auction changed state): refresh the history and my standing.
   const marker = listing ? `${listing.bid_count}:${listing.status}` : null
   const lastMarker = useRef(null)
@@ -48,6 +64,7 @@ export function ListingPage() {
     if (marker !== null && lastMarker.current !== null && lastMarker.current !== marker) {
       queryClient.invalidateQueries({ queryKey: ['bids', id] })
       queryClient.invalidateQueries({ queryKey: ['my-bids'] })
+      queryClient.invalidateQueries({ queryKey: ['auto-bids', id] })
     }
     lastMarker.current = marker
   }, [marker, id, queryClient])
@@ -114,7 +131,7 @@ export function ListingPage() {
           <ImageGallery images={listing.images} title={listing.title} />
         </div>
         <div className="area-panel">
-          <BidPanel listing={listing} myBid={myBid} />
+          <BidPanel listing={listing} myBid={myBid} myMax={myMax} />
         </div>
         <div className="area-about">
           <h2>About this item</h2>
@@ -124,11 +141,29 @@ export function ListingPage() {
               Edited {new Date(listing.edited_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
             </p>
           )}
+
+          {listing.handover_spot && (
+            <div className="handover-spot-card">
+              <div className="handover-spot-icon">📍</div>
+              <div className="handover-spot-body">
+                <strong className="handover-spot-title">Campus Handover Spot: {listing.handover_spot}</strong>
+                <p className="handover-spot-desc">
+                  Meet in person on campus during daylight. Always test and inspect the item before paying via UPI / cash.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <h2 className="history-title">Bid history {listing.bid_count > 0 && <span className="muted">({listing.bid_count})</span>}</h2>
       {bidsQuery.isPending ? <p className="muted">Loading bids…</p> : <BidHistory bids={bidsQuery.data ?? []} />}
+
+      <h2 className="history-title">
+        Automatic maximums {autoBidsQuery.data?.length > 0 && <span className="muted">({autoBidsQuery.data.length})</span>}
+      </h2>
+      <p className="muted small">Visible to everyone. The app only bids for someone as much as needed to keep them in front.</p>
+      <AutoBidList autoBids={autoBidsQuery.data ?? []} />
     </section>
   )
 }

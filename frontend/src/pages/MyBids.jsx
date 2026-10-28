@@ -4,9 +4,11 @@ import { api, mediaUrl } from '../api/client'
 import { errorMessage } from '../api/errors'
 import { Countdown } from '../components/Countdown'
 import { StatusBadge } from '../components/StatusBadge'
+import { formatRupees } from '../lib/format'
 import { groupBids } from '../lib/myBids'
 
 export function MyBids() {
+  const autoQuery = useQuery({ queryKey: ['my-auto-bids'], queryFn: () => api('/me/auto-bids'), refetchInterval: 10_000 })
   const query = useQuery({
     queryKey: ['my-bids'],
     queryFn: () => api('/me/bids'),
@@ -26,6 +28,7 @@ export function MyBids() {
   }
 
   const groups = groupBids(query.data)
+  const maxByListing = new Map((autoQuery.data ?? []).map((a) => [a.listing_id, a.max_amount]))
 
   return (
     <section>
@@ -55,6 +58,9 @@ export function MyBids() {
                       <StatusBadge status={row.listing.status} />
                     </div>
                     <p className={`outcome outcome-${outcome.tone}`}>{outcome.text}</p>
+                    {row.listing.status === 'active' && maxByListing.has(row.listing.id) && (
+                      <p className="muted small">Automatic bidding up to {formatRupees(maxByListing.get(row.listing.id))}</p>
+                    )}
                     {row.listing.status === 'active' && (
                       <p className="muted small">
                         <Countdown closesAt={row.listing.closes_at} /> · {row.listing.bid_count} {row.listing.bid_count === 1 ? 'bid' : 'bids'} ·{' '}

@@ -54,12 +54,13 @@ def bid_placed(db: Session, listing: Listing, bid: Bid, previous_leader_id: int 
     if previous_leader_id is not None:
         notify(
             db, previous_leader_id, "outbid", f"You were outbid on {listing.title}",
-            f"The price is now ₹{bid.amount}. Place a higher bid to get back in.",
+            f"The price is now ₹{bid.amount}. Place a higher bid or raise your maximum to get back in.",
             listing.id, actor_id=bid.bidder_id, now=bid.created_at,
         )
     notify(
         db, listing.seller_id, "new_bid", f"New bid on {listing.title}",
-        f"{bidder_name} bid ₹{bid.amount}.", listing.id, actor_id=bid.bidder_id, now=bid.created_at,
+        f"{bidder_name} bid ₹{bid.amount}{' (automatic bid)' if bid.is_auto else ''}.",
+        listing.id, actor_id=bid.bidder_id, now=bid.created_at,
     )
 
 

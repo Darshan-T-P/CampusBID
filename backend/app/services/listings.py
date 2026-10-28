@@ -65,6 +65,9 @@ def _clean_fields(fields: dict, now: datetime) -> dict:
     clean = {}
     for key, value in fields.items():
         if value is None:
+            if key == "handover_spot":
+                clean[key] = None
+                continue
             raise ListingError(f"{key} cannot be empty")
         if key == "title":
             value = value.strip()
@@ -72,6 +75,10 @@ def _clean_fields(fields: dict, now: datetime) -> dict:
                 raise ListingError("Title is required")
         elif key == "description":
             value = value.strip()
+        elif key == "handover_spot":
+            value = value.strip() if isinstance(value, str) else None
+            if value and len(value) > 120:
+                raise ListingError("Handover spot must be 120 characters or less")
         elif key in ("starting_price", "min_increment"):
             if value < 1:
                 raise ListingError("Starting price and minimum increment must be at least 1")
@@ -125,6 +132,7 @@ def create_listing(
     min_increment: int,
     closes_at: datetime,
     images: list[bytes],
+    handover_spot: str | None = None,
     now: datetime | None = None,
 ) -> Listing:
     now = now or utcnow()
@@ -137,6 +145,7 @@ def create_listing(
             starting_price=starting_price,
             min_increment=min_increment,
             closes_at=closes_at,
+            handover_spot=handover_spot,
         ),
         now,
     )
@@ -243,10 +252,16 @@ def listing_detail(db: Session, listing: Listing, now: datetime | None = None) -
         bid_count=bid_count,
         leading_bidder=leading_bidder,
         outcome_note=listing.outcome_note,
+        handover_spot=listing.handover_spot,
         edited_at=listing.edited_at,
         images=[f"/media/{img.path}" for img in listing.images],
         image_ids=[img.id for img in listing.images],
-        seller=SellerPublic(id=listing.seller.id, display_name=listing.seller.display_name),
+        seller=SellerPublic(
+            id=listing.seller.id,
+            display_name=listing.seller.display_name,
+            department=listing.seller.department,
+            year_of_study=listing.seller.year_of_study,
+        ),
         created_at=listing.created_at,
         server_time=now or utcnow(),
     )
@@ -278,6 +293,7 @@ def _card(listing: Listing, bid_count: int) -> ListingCard:
         closes_at=listing.closes_at,
         thumbnail=f"/media/{listing.images[0].path}" if listing.images else None,
         seller_name=listing.seller.display_name,
+        handover_spot=listing.handover_spot,
     )
 
 

@@ -1,8 +1,11 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query
+from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
+from app.models import AutoBid
+from app.schemas.bid import MyAutoBid
 from app.schemas.listing import ListingPage, MyBid
 from app.services import listings as listing_service
 
@@ -31,3 +34,10 @@ def my_listings(
 def my_bids(user: CurrentUser, db: DbSession):
     """Every listing I've bid on, with my best bid and whether I'm currently leading."""
     return listing_service.my_bids(db, user.id)
+
+
+@router.get("/auto-bids", response_model=list[MyAutoBid])
+def my_auto_bids(user: CurrentUser, db: DbSession):
+    """My standing maximums, so the UI can show which auctions I have one on."""
+    rows = db.scalars(select(AutoBid).where(AutoBid.user_id == user.id)).all()
+    return [MyAutoBid(listing_id=a.listing_id, max_amount=a.max_amount) for a in rows]

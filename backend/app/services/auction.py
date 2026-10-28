@@ -1,6 +1,6 @@
 """The auction engine: every money/time rule lives here.
 
-Routes, the background closer and (later) the auto-bidder all go through these
+Routes, the background closer and the auto-bidder all go through these
 functions. `now` is injectable so tests control the clock; production passes nothing
 and gets server time.
 """
@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
-from app.models import Bid, Listing, ListingStatus
+from app.models import AutoBid, Bid, Listing, ListingStatus
 from app.services import notifications
 from app.services.errors import ListingError
 
@@ -85,6 +85,132 @@ def begin_write(db: Session) -> None:
         db.connection().exec_driver_sql("BEGIN IMMEDIATE")
 
 
+def _insert_bid(db: Session, listing: Listing, bidder_id: int, amount: int, now: datetime, is_auto: bool) -> Bid:
+    """Record a bid and move the listing's price and leader. The one place a bid row is ever created."""
+    previous_leader = notifications.winner_id(db, listing)  # read before the lead changes
+    bid = Bid(listing_id=listing.id, bidder_id=bidder_id, amount=amount, created_at=now, is_auto=is_auto)
+    db.add(bid)
+    db.flush()
+    listing.current_price = amount
+    listing.leading_bid_id = bid.id
+    notifications.bid_placed(db, listing, bid, previous_leader)
+    return bid
+
+
+def _resolve_auto_bids(db: Session, listing: Listing, now: datetime) -> None:
+    """Let standing maximums respond until nobody left could still validly beat the current price.
+
+    Each round takes the strongest challenger (highest maximum; on a tie, whoever committed first) and
+    settles it against the current leader, whose "ceiling" is the higher of their price and their own
+    maximum:
+
+    * challenger above the ceiling  -> challenger leads, one step over the ceiling (never past their maximum)
+    * leader at or above it         -> the challenger bids as high as the leader can still answer, and the
+                                       leader's own maximum answers one step higher
+    * challenger cannot afford a valid bid -> they are skipped this round
+
+    Every bid made this way clears the normal increment rule, so the history reads like real bidding.
+    Runs inside the caller's write lock, so it can't race with anyone.
+    """
+    step = listing.min_increment
+    skipped: set[int] = set()
+    for _ in range(500):  # each round raises the price or retires a challenger; this is only a safety net
+        leader_id = notifications.winner_id(db, listing)
+        autos = db.scalars(select(AutoBid).where(AutoBid.listing_id == listing.id)).all()
+        needed = min_valid_bid(listing)
+        challengers = [a for a in autos if a.user_id != leader_id and a.max_amount >= needed and a.id not in skipped]
+        if not challengers:
+            return
+        challenger = min(challengers, key=lambda a: (-a.max_amount, a.set_at, a.id))
+        if leader_id is None:  # nobody has bid yet: the strongest maximum opens at the starting price
+            _insert_bid(db, listing, challenger.user_id, needed, now, is_auto=True)
+            continue
+
+        leader_auto = next((a for a in autos if a.user_id == leader_id), None)
+        ceiling = max(listing.current_price, leader_auto.max_amount) if leader_auto else listing.current_price
+        challenger_committed_first = (
+            leader_auto is not None
+            and leader_auto.max_amount == ceiling
+            and (challenger.set_at, challenger.id) < (leader_auto.set_at, leader_auto.id)
+        )
+        if challenger.max_amount > ceiling or (challenger.max_amount == ceiling and challenger_committed_first):
+            _insert_bid(db, listing, challenger.user_id, min(challenger.max_amount, ceiling + step), now, is_auto=True)
+        else:
+            highest = min(challenger.max_amount, ceiling - step)  # the most the leader can still answer
+            if highest < needed:
+                skipped.add(challenger.id)
+                continue
+            _insert_bid(db, listing, challenger.user_id, highest, now, is_auto=True)
+            _insert_bid(db, listing, leader_id, highest + step, now, is_auto=True)
+    raise RuntimeError("automatic bidding did not settle")
+
+
+def set_auto_bid(
+    db: Session, listing_id: int, user_id: int, max_amount: int, now: datetime | None = None
+) -> AutoBid:
+    """Set or change my maximum on an auction. The app then bids for me, as little as needed, up to it."""
+    now = now or utcnow()
+    begin_write(db)
+    try:
+        listing = db.scalars(
+            select(Listing).where(Listing.id == listing_id).execution_options(populate_existing=True)
+        ).one_or_none()
+        if listing is None:
+            raise BidError("not_found", "Listing not found")
+        if close_if_due(db, listing, now):
+            db.commit()
+            raise BidError("closed", "Auction has closed")
+        if listing.status != ListingStatus.active:
+            raise BidError("closed", "Auction is not open for bids")
+        if user_id == listing.seller_id:
+            raise BidError("own_listing", "You cannot bid on your own listing")
+
+        leading = notifications.winner_id(db, listing) == user_id
+        floor = listing.current_price if leading else min_valid_bid(listing)  # a leader only needs to cover their own price
+        if max_amount < floor:
+            raise BidError("too_low", f"Your maximum must be at least {floor}", min_bid=floor)
+
+        auto = db.scalar(select(AutoBid).where(AutoBid.listing_id == listing.id, AutoBid.user_id == user_id))
+        if auto is None:
+            auto = AutoBid(listing_id=listing.id, user_id=user_id, max_amount=max_amount, set_at=now)
+            db.add(auto)
+        elif auto.max_amount != max_amount:
+            auto.max_amount = max_amount
+            auto.set_at = now  # a new commitment goes to the back of the queue on ties
+        db.flush()
+        _resolve_auto_bids(db, listing, now)
+        db.commit()
+        return auto
+    except BaseException:
+        db.rollback()
+        raise
+
+
+def remove_auto_bid(db: Session, listing_id: int, user_id: int, now: datetime | None = None) -> None:
+    """Withdraw my maximum. Bids already placed stand; nothing more will be placed for me."""
+    now = now or utcnow()
+    begin_write(db)
+    try:
+        listing = db.scalars(
+            select(Listing).where(Listing.id == listing_id).execution_options(populate_existing=True)
+        ).one_or_none()
+        if listing is None:
+            raise BidError("not_found", "Listing not found")
+        if close_if_due(db, listing, now):
+            db.commit()
+            raise BidError("closed", "Auction has closed")
+        if listing.status != ListingStatus.active:
+            raise BidError("closed", "Auction is not open for bids")
+        auto = db.scalar(select(AutoBid).where(AutoBid.listing_id == listing.id, AutoBid.user_id == user_id))
+        if auto is None:
+            raise BidError("not_found", "You have no maximum set on this auction")
+        db.delete(auto)
+        db.commit()
+    except BaseException:
+        db.rollback()
+        raise
+
+
 def place_bid(
     db: Session,
     listing_id: int,
@@ -117,12 +243,8 @@ def place_bid(
         if amount < minimum:
             raise BidError("too_low", f"Bid must be at least {minimum}", min_bid=minimum)
 
-        bid = Bid(listing_id=listing.id, bidder_id=bidder_id, amount=amount, created_at=now)
-        db.add(bid)
-        db.flush()
-        listing.current_price = amount
-        listing.leading_bid_id = bid.id
-        notifications.bid_placed(db, listing, bid, previous_leader)
+        bid = _insert_bid(db, listing, bidder_id, amount, now, is_auto=False)
+        _resolve_auto_bids(db, listing, now)  # standing automatic bids may answer this one at once
         db.commit()
         return bid
     except BaseException:

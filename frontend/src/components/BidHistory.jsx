@@ -14,6 +14,7 @@ export function BidHistory({ bids }) {
           <span className="history-amount">{formatRupees(bid.amount)}</span>
           <span className="history-who">
             {bid.bidder_name}
+            {bid.is_auto && <span className="chip chip-auto" title="Placed automatically from a maximum">Auto</span>}
             {i === 0 && <span className="chip chip-lead">Highest</span>}
           </span>
           <time className="muted small" dateTime={bid.created_at}>
