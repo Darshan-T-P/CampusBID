@@ -4,7 +4,13 @@ from sqlalchemy import select
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import settings
 from app.core.ratelimit import enforce
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import (
+    burn_password_check,
+    create_access_token,
+    hash_password,
+    needs_rehash,
+    verify_password,
+)
 from app.models import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserMe, VerifyRequest
 from app.services import accounts
@@ -60,8 +66,14 @@ def login(body: LoginRequest, request: Request, db: DbSession):
     enforce(f"login:ip:{_ip(request)}", limit=50, window=600)
     enforce(f"login:email:{email}", limit=10, window=600)  # slows password guessing on one account
     user = db.scalar(select(User).where(User.email == email))
-    if user is None or not verify_password(body.password, user.password_hash):
+    if user is None:
+        burn_password_check(body.password)  # same cost as a real check: timing must not reveal who has an account
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
+    if not verify_password(body.password, user.password_hash):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
+    if needs_rehash(user.password_hash):
+        user.password_hash = hash_password(body.password)  # quietly move old accounts to the stronger settings
+        db.commit()
     return TokenResponse(access_token=create_access_token(user.id), is_verified=user.is_verified)
 
 

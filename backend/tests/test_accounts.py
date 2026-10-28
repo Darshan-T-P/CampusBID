@@ -69,7 +69,8 @@ def test_T1_app_refuses_to_start_without_domains_unless_dev_mode(monkeypatch):
     check_startup_settings()  # fine in dev mode
     monkeypatch.setattr(settings, "dev_mode", False)
     monkeypatch.setattr(settings, "allowed_email_domains", "college.edu")
-    check_startup_settings()  # fine once a domain is configured
+    monkeypatch.setattr(settings, "secret_key", "k" * 40)
+    check_startup_settings()  # fine once a domain and a real secret are configured
 
 
 @pytest.mark.parametrize(

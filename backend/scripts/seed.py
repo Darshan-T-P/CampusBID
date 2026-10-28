@@ -3,6 +3,7 @@
     cd backend
     .venv/bin/python scripts/seed.py            # add demo users + auctions (refuses if already seeded)
     .venv/bin/python scripts/seed.py --reset    # wipe ALL data (and uploaded photos) first, then seed
+    .venv/bin/python scripts/seed.py --clear    # wipe ALL data and photos, and do NOT seed (back to an empty app)
     .venv/bin/python scripts/seed.py --domain college.edu
 
 Everything goes through the app's own services (create listing, place bid, close, approve...), so the data
@@ -185,12 +186,24 @@ def run_seed(db: Session, domain: str) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--reset", action="store_true", help="delete ALL existing data and photos first")
+    parser.add_argument("--reset", action="store_true", help="delete ALL existing data and photos first, then seed")
+    parser.add_argument("--force", action="store_true", help="allow seeding when DEV_MODE is off (creates accounts with a KNOWN password!)")
+    parser.add_argument("--clear", action="store_true", help="delete ALL data and photos and stop (no seeding)")
     parser.add_argument("--domain", default=(settings.email_domains or ["campus.edu"])[0], help="email domain for the demo users")
     args = parser.parse_args()
 
+    if not (settings.dev_mode or args.force or args.clear):
+        sys.exit(
+            "Refusing to seed: DEV_MODE is off, and the demo accounts all share the password 'password123'.\n"
+            "Set DEV_MODE=true for a local/demo database, or pass --force if you really mean it."
+        )
+
     db_session.init_db()
     with db_session.SessionLocal() as db:
+        if args.clear:
+            wipe(db)
+            print(f"Cleared every table in {settings.database_url} and removed {settings.media_dir}/listings. Nothing was seeded.")
+            return
         if args.reset:
             print(f"Resetting {settings.database_url} and {settings.media_dir}/listings ...")
             wipe(db)

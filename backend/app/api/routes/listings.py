@@ -5,6 +5,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, sta
 
 from app.api.deps import CurrentUser, DbSession, VerifiedUser
 from app.api.errors import listing_http_error
+from app.core.ratelimit import enforce
 from app.models import Category, Condition, Listing, ListingStatus
 from app.schemas.listing import ListingDetail, ListingPage, ListingUpdate
 from app.services import listings as listing_service
@@ -32,6 +33,7 @@ def create_listing(
     description: Annotated[str, Form(max_length=5000)] = "",
     images: Annotated[list[UploadFile], File()] = [],
 ):
+    enforce(f"list:user:{user.id}", limit=20, window=3600)
     blobs = _read_uploads(images)
     try:
         listing = listing_service.create_listing(
@@ -120,6 +122,7 @@ def add_photos(
     db: DbSession,
     images: Annotated[list[UploadFile], File()] = [],
 ):
+    enforce(f"upload:user:{user.id}", limit=30, window=3600)
     try:
         listing = listing_service.add_images(db, listing_id, user.id, _read_uploads(images))
     except ListingError as e:

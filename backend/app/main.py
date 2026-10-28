@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes import auth, bids, listings, me, notifications, sale
 from app.core.clock import utcnow
 from app.core.config import settings
+from app.core.middleware import SecurityMiddleware
 from app.db.session import SessionLocal, init_db
 from app.services.closer import run_closer
 
@@ -19,6 +20,11 @@ def check_startup_settings() -> None:
         raise RuntimeError(
             "ALLOWED_EMAIL_DOMAINS is required (e.g. college.edu). "
             "Set DEV_MODE=true to run without it for local development."
+        )
+    if settings.secret_key_is_weak and not settings.dev_mode:
+        raise RuntimeError(
+            "SECRET_KEY is missing, too short (< 32 chars) or still a placeholder. Anyone could forge login tokens. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
         )
 
 
@@ -37,12 +43,15 @@ async def lifespan(_app: FastAPI):
             await closer
 
 
-app = FastAPI(title="CampusBid", version="0.1.0", lifespan=lifespan)
+# The interactive docs/schema are for development; a deployed server shouldn't advertise its whole API surface.
+_docs = {} if settings.dev_mode else {"docs_url": None, "redoc_url": None, "openapi_url": None}
+app = FastAPI(title="CampusBid", version="0.1.0", lifespan=lifespan, **_docs)
+app.add_middleware(SecurityMiddleware)
 
 # Vite dev server; in production the built frontend is served from the same origin.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=settings.cors_origin_list,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -18,6 +18,8 @@ def account_defaults(monkeypatch):
     monkeypatch.setattr(settings, "auto_verify", True)
     monkeypatch.setattr(settings, "allowed_email_domains", "")
     monkeypatch.setattr(settings, "rate_limit_enabled", False)
+    monkeypatch.setattr(settings, "password_scrypt_n", 2**4)  # real cost is deliberately slow; tests needn't pay it
+    monkeypatch.setattr(settings, "password_scrypt_p", 1)
     limiter.reset()
 
 
