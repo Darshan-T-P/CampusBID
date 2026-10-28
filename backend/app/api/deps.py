@@ -25,7 +25,7 @@ def get_current_user(
         raise unauthorized
     claims = decode_token_claims(creds.credentials)
     user = db.get(User, claims[0]) if claims is not None else None
-    if user is None:
+    if user is None or user.deleted_at is not None:
         raise unauthorized
     # A password change signs out everything issued before it (a stolen token dies with the old password).
     if user.password_changed_at is not None and claims[1] < int(user.password_changed_at.timestamp()):

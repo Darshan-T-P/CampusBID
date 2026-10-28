@@ -11,8 +11,9 @@ from app.models import AutoBid
 from app.schemas.auth import TokenResponse, UserMe
 from app.schemas.bid import MyAutoBid
 from app.schemas.listing import ListingPage, MyBid
-from app.schemas.profile import PasswordChange, PasswordCheck, ProfileSummary, ProfileUpdate
-from app.services import accounts
+from app.schemas.profile import AccountDelete, PasswordChange, PasswordCheck, ProfileSummary, ProfileUpdate
+from app.services import accounts, deletion
+from app.services.errors import AccountError
 from app.services import listings as listing_service
 from app.services import profile as profile_service
 
@@ -91,6 +92,19 @@ def change_password(body: PasswordChange, user: CurrentUser, background: Backgro
     db.commit()
     background.add_task(accounts.deliver_password_changed, user.email)
     return TokenResponse(access_token=create_access_token(user.id), is_verified=user.is_verified)
+
+
+@router.post("/delete", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(body: AccountDelete, user: CurrentUser, db: DbSession):
+    """Permanently delete my account. Needs my password. Refused (409) while others depend on me: open auctions,
+    sales in progress, or a lead on an open auction."""
+    enforce(f"password:user:{user.id}", limit=10, window=600)  # same budget as guessing the current password
+    if not verify_password(body.password, user.password_hash):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "That is not your current password")
+    try:
+        deletion.delete_account(db, user.id)
+    except AccountError as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, e.message) from e
 
 
 @router.get("/summary", response_model=ProfileSummary)

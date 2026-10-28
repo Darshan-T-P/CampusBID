@@ -3788,3 +3788,22 @@ input:disabled {
   border-color: #bfdbfe;
   background: #eff6ff;
 }
+
+/* --- Delete account --- */
+.danger-zone {
+  margin-top: 24px;
+  border-color: #fecaca;
+}
+
+.danger-zone h2 {
+  color: #b91c1c;
+}
+
+.danger-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  display: grid;
+  gap: 4px;
+}

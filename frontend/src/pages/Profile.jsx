@@ -238,6 +238,69 @@ function ChangePassword() {
   )
 }
 
+const DELETE_WORD = 'DELETE'
+
+/** Leave Relay for good. Two deliberate steps: open the panel, then enter the password and type DELETE. */
+function DeleteAccount() {
+  const { logout } = useAuth()
+  const [open, setOpen] = useState(false)
+  const [password, setPassword] = useState('')
+  const [typed, setTyped] = useState('')
+  const [error, setError] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  function close() {
+    setOpen(false)
+    setPassword('')
+    setTyped('')
+    setError(null)
+  }
+
+  async function onSubmit(event) {
+    event.preventDefault()
+    setError(null)
+    setBusy(true)
+    try {
+      await api('/me/delete', { method: 'POST', body: { password } })
+      logout()
+      window.location.replace('/') // a full reload: the session and everything cached from it are gone, and no sign-in redirect fires first
+    } catch (e) {
+      setError(errorMessage(e))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="card danger-zone" aria-labelledby="del-h">
+      <h2 id="del-h"><Icon name="x" size={18} /> Delete account</h2>
+      {!open ? (
+        <>
+          <p className="muted">Permanently remove your account. This can't be undone.</p>
+          <div><button type="button" className="btn btn-danger-text" onClick={() => setOpen(true)}>Delete my account…</button></div>
+        </>
+      ) : (
+        <form onSubmit={onSubmit} className="form" noValidate>
+          <ul className="danger-list">
+            <li>Your notifications, saved auctions and automatic bids are removed.</li>
+            <li>Bids and listings you already made stay in other students' histories, shown as "Deleted user".</li>
+            <li>You can't delete while you have open auctions, lead an open auction, or have a sale in progress.</li>
+          </ul>
+          <PasswordField id="del-password" label="Your password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <div className="form-field">
+            <label htmlFor="del-confirm">Type {DELETE_WORD} to confirm</label>
+            <input id="del-confirm" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} />
+          </div>
+          {error && <p className="error" role="alert">{error}</p>}
+          <div className="form-actions">
+            <button className="btn btn-danger" disabled={busy || !password || typed !== DELETE_WORD}>{busy ? 'Deleting…' : 'Permanently delete account'}</button>
+            <button type="button" className="btn btn-ghost" onClick={close} disabled={busy}>Cancel</button>
+          </div>
+        </form>
+      )}
+    </section>
+  )
+}
+
 export function Profile() {
   const { user } = useAuth()
   if (!user) return null // RequireAuth shows the loading state; nothing to render until we know who this is
@@ -271,6 +334,8 @@ export function Profile() {
         <EditProfile user={user} />
         <ChangePassword />
       </div>
+
+      <DeleteAccount />
     </section>
   )
 }

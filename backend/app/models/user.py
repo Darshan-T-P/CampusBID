@@ -23,3 +23,5 @@ class User(Base):
     # Login tokens issued before this moment are refused, so changing the password signs out other devices.
     password_changed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    # Set when the person deletes their account (the row stays only to keep other students' histories intact).
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, default=None)
