@@ -6,6 +6,7 @@ const good = {
   displayName: 'Asha',
   year: '3',
   department: 'Computer Science',
+  phone: '98765 43210',
   password: 'correct-horse-9',
   confirm: 'correct-horse-9',
 }
@@ -25,12 +26,16 @@ describe('validateRegistration', () => {
     expect(validateRegistration(good)).toEqual({})
   })
   it('flags every empty field at once', () => {
-    const empty = { email: '', displayName: '', year: '', department: '', password: '', confirm: '' }
-    expect(Object.keys(validateRegistration(empty)).sort()).toEqual(['confirm', 'department', 'displayName', 'email', 'password', 'year'])
+    const empty = { email: '', displayName: '', year: '', department: '', phone: '', password: '', confirm: '' }
+    expect(Object.keys(validateRegistration(empty)).sort()).toEqual(['confirm', 'department', 'displayName', 'email', 'password', 'phone', 'year'])
   })
   it('explains a non-.edu email clearly', () => {
     expect(validateRegistration({ ...good, email: 'asha@gmail.com' }).email).toMatch(/must end in \.edu/)
     expect(validateRegistration({ ...good, email: 'not-an-email' }).email).toMatch(/valid email/)
+  })
+  it('requires a valid mobile number', () => {
+    expect(validateRegistration({ ...good, phone: '' }).phone).toMatch(/Enter your mobile/)
+    expect(validateRegistration({ ...good, phone: '12345' }).phone).toMatch(/valid mobile number/)
   })
   it('requires a password of at least 8 characters', () => {
     expect(validateRegistration({ ...good, password: 'short', confirm: 'short' }).password).toMatch(/at least 8/)

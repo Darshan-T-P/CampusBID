@@ -7,6 +7,7 @@ import { Countdown } from '../components/Countdown'
 import { Icon } from '../components/Icon'
 import { SellerActions } from '../components/SellerActions'
 import { StatusBadge } from '../components/StatusBadge'
+import { ContactCard } from '../components/ContactCard'
 import { formatRupees } from '../lib/format'
 import { groupListings } from '../lib/sale'
 
@@ -51,6 +52,7 @@ function Row({ listing, notice, onNotice }) {
             )}
           </p>
         )}
+        {listing.status === 'reserved' && <ContactCard listingId={listing.id} compact />}
         {!hasWinner && d?.outcome_note && <p className="muted small">{d.outcome_note}</p>}
         {listing.status === 'active' && (
           <div>

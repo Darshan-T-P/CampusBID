@@ -1,4 +1,5 @@
 // Rules for the Profile page forms. The server re-checks everything; these give instant feedback.
+import { normalizePhone, phoneError } from './phone'
 
 /** Errors for the "edit my details" form. Department and year are optional here (older accounts may lack them). */
 export function validateProfile(v) {
@@ -7,6 +8,8 @@ export function validateProfile(v) {
   if (!name) errors.displayName = 'Enter the name other students will see'
   else if (name.length > 80) errors.displayName = 'Keep your name under 80 characters'
   if (v.department.trim().length > 80) errors.department = 'Keep the department under 80 characters'
+  const phone = phoneError(v.phone ?? '')
+  if (phone) errors.phone = phone
   return errors
 }
 
@@ -18,6 +21,8 @@ export function profileChanges(user, v) {
   if (department !== (user.department ?? null)) changes.department = department
   const year = v.year === '' ? null : Number(v.year)
   if (year !== (user.year_of_study ?? null)) changes.year_of_study = year
+  const phone = (v.phone ?? '').trim() === '' ? null : normalizePhone(v.phone)
+  if (phone !== (user.phone ?? null)) changes.phone = phone
   return changes
 }
 

@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from app.core.phone import clean_phone
 
 
 class RegisterRequest(BaseModel):
@@ -9,6 +11,12 @@ class RegisterRequest(BaseModel):
     display_name: str = Field(min_length=1, max_length=80)
     department: str | None = Field(default=None, max_length=80)
     year_of_study: int | None = Field(default=None, ge=1, le=6, description="1-5, or 6 for postgraduate")
+    phone: str | None = Field(default=None, max_length=30, description="Mobile number; shared only with the other side of a sale")
+
+    @field_validator("phone")
+    @classmethod
+    def valid_phone(cls, value: str | None) -> str | None:
+        return clean_phone(value)
 
 
 class LoginRequest(BaseModel):
@@ -33,6 +41,7 @@ class UserMe(BaseModel):
     display_name: str
     department: str | None = None
     year_of_study: int | None = None
+    phone: str | None = None  # the caller's own number; nobody else ever gets it from here
     is_verified: bool
     created_at: datetime
 

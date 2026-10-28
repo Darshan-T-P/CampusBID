@@ -7,11 +7,14 @@ import { useAuth } from '../auth/useAuth'
 import { AutoBidList } from '../components/AutoBidList'
 import { BidHistory } from '../components/BidHistory'
 import { BidPanel } from '../components/BidPanel'
+import { ContactCard } from '../components/ContactCard'
+import { ListingQA } from '../components/ListingQA'
 import { WatchButton } from '../components/WatchButton'
 import { Icon } from '../components/Icon'
 import { ImageGallery } from '../components/ImageGallery'
 import { useAuctionStream } from '../hooks/useAuctionStream'
 import { categoryLabel, conditionLabel, formatRupees, yearLabel } from '../lib/format'
+import { memberSince } from '../lib/profileForm'
 
 const LIVE_MS = 2500 // fallback when real-time push is connecting
 const IDLE_MS = 20_000 // once it has ended, nothing changes quickly
@@ -208,6 +211,15 @@ export function ListingPage() {
               <button
                 type="button"
                 role="tab"
+                aria-selected={activeTab === 'qa'}
+                className={`listing-tab-btn ${activeTab === 'qa' ? 'listing-tab-active' : ''}`}
+                onClick={() => setActiveTab('qa')}
+              >
+                <Icon name="messageSquare" size={16} /> Q&A
+              </button>
+              <button
+                type="button"
+                role="tab"
                 aria-selected={activeTab === 'safety'}
                 className={`listing-tab-btn ${activeTab === 'safety' ? 'listing-tab-active' : ''}`}
                 onClick={() => setActiveTab('safety')}
@@ -246,18 +258,26 @@ export function ListingPage() {
 
                   {/* Verified Student Seller Card */}
                   <div className="seller-profile-card">
-                    <div className="seller-avatar">{sellerInitials}</div>
-                    <div className="seller-details">
-                      <div className="seller-name-row">
-                        <strong className="seller-name">{listing.seller.display_name}</strong>
-                        <span className="verified-badge-chip">
-                          <Icon name="shield" size={13} /> Verified Student
-                        </span>
+                    <div className="seller-top">
+                      <div className="seller-avatar">{sellerInitials}</div>
+                      <div className="seller-details">
+                        <div className="seller-name-row">
+                          <strong className="seller-name">{listing.seller.display_name}</strong>
+                          <span className="verified-badge-chip">
+                            <Icon name="shield" size={13} /> Verified Student
+                          </span>
+                        </div>
+                        <p className="seller-meta">
+                          {[yearLabel(listing.seller.year_of_study), listing.seller.department].filter(Boolean).join(' · ') || 'Year and department not shared'}
+                        </p>
                       </div>
-                      <p className="seller-meta">
-                        {[yearLabel(listing.seller.year_of_study), listing.seller.department].filter(Boolean).join(' · ') || 'Enrolled Student'}
-                      </p>
                     </div>
+                    <dl className="seller-stats">
+                      <div><dt>Items sold</dt><dd>{listing.seller.items_sold}</dd></div>
+                      <div><dt>Listed</dt><dd>{listing.seller.listed}</dd></div>
+                      <div><dt>Open now</dt><dd>{listing.seller.open_now}</dd></div>
+                      <div><dt>Member since</dt><dd>{listing.seller.member_since ? memberSince(listing.seller.member_since) : '-'}</dd></div>
+                    </dl>
                   </div>
 
                   {/* Item Specs Table */}
@@ -327,6 +347,12 @@ export function ListingPage() {
                 </div>
               )}
 
+              {activeTab === 'qa' && (
+                <div className="tab-pane-qa">
+                  <ListingQA listing={listing} />
+                </div>
+              )}
+
               {activeTab === 'safety' && (
                 <div className="tab-pane-safety">
                   <h3 className="section-subtitle">Campus Handover Protocol</h3>
@@ -361,6 +387,7 @@ export function ListingPage() {
         {/* Right Column: Sticky Bidding Console */}
         <div className="area-panel">
           <BidPanel listing={listing} myBid={myBid} myMax={myMax} />
+          {isSignedIn && listing.status === 'reserved' && <ContactCard listingId={listing.id} />}
         </div>
       </div>
     </div>

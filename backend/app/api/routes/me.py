@@ -53,7 +53,7 @@ def my_auto_bids(user: CurrentUser, db: DbSession):
 
 @router.patch("", response_model=UserMe)
 def update_profile(body: ProfileUpdate, user: CurrentUser, db: DbSession):
-    """Change my name, department or year. Only what I send changes; department/year can be cleared with null."""
+    """Change my name, department, year or phone. Only what I send changes; department, year and phone can be cleared."""
     enforce(f"profile:user:{user.id}", limit=10, window=3600)
     changes = body.model_dump(exclude_unset=True)
     if not changes:
@@ -64,6 +64,8 @@ def update_profile(body: ProfileUpdate, user: CurrentUser, db: DbSession):
         user.department = (changes["department"] or "").strip() or None
     if "year_of_study" in changes:
         user.year_of_study = changes["year_of_study"]
+    if "phone" in changes:
+        user.phone = changes["phone"]  # already normalised (or None to remove it) by the schema
     db.commit()
     return user
 

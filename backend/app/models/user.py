@@ -18,6 +18,8 @@ class User(Base):
     # Who they are on campus. Shown next to a seller's name, never alongside their email.
     department: Mapped[str | None] = mapped_column(String(80), default=None)
     year_of_study: Mapped[int | None] = mapped_column(Integer, default=None)  # 1-5, or 6 for postgraduate
+    # Private. Shared only with the other side of an approved sale (see services/sale.py), never shown publicly.
+    phone: Mapped[str | None] = mapped_column(String(20), default=None)
     # Only verified campus emails may list or bid; unverified accounts can browse.
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     # Login tokens issued before this moment are refused, so changing the password signs out other devices.

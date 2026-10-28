@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 
+from app.core.phone import clean_phone
+
 
 class ProfileUpdate(BaseModel):
     """Fields a person may change about themselves. Anything left out stays as it is."""
@@ -7,6 +9,12 @@ class ProfileUpdate(BaseModel):
     display_name: str | None = Field(default=None, max_length=80)
     department: str | None = Field(default=None, max_length=80)
     year_of_study: int | None = Field(default=None, ge=1, le=6)
+    phone: str | None = Field(default=None, max_length=30)  # blank removes it
+
+    @field_validator("phone")
+    @classmethod
+    def valid_phone(cls, value: str | None) -> str | None:
+        return clean_phone(value)
 
     @field_validator("display_name")
     @classmethod

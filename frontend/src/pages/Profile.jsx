@@ -7,6 +7,7 @@ import { useAuth } from '../auth/useAuth'
 import { Icon } from '../components/Icon'
 import { PasswordField } from '../components/PasswordField'
 import { YEARS, formatRupees, yearLabel } from '../lib/format'
+import { formatPhone } from '../lib/phone'
 import { memberSince, profileChanges, validatePasswordChange, validateProfile } from '../lib/profileForm'
 import { DEPARTMENTS, passwordStrength } from '../lib/registerForm'
 
@@ -77,6 +78,7 @@ function EditProfile({ user }) {
     displayName: user.display_name,
     department: user.department ?? '',
     year: user.year_of_study ? String(user.year_of_study) : '',
+    phone: user.phone ? formatPhone(user.phone) : '',
   })
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState(null)
@@ -129,6 +131,13 @@ function EditProfile({ user }) {
             <input id="p-dept" list="p-dept-options" value={values.department} onChange={set('department')} maxLength={80} aria-invalid={errors.department ? 'true' : undefined} />
             <datalist id="p-dept-options">{DEPARTMENTS.map((d) => <option key={d} value={d} />)}</datalist>
             <div className="field-notes">{errors.department && <small className="field-error" role="alert">{errors.department}</small>}</div>
+          </div>
+        </div>
+        <div className="form-field">
+          <label htmlFor="p-phone">Mobile number</label>
+          <input id="p-phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={30} placeholder="98765 43210" value={values.phone} onChange={set('phone')} aria-invalid={errors.phone ? 'true' : undefined} />
+          <div className="field-notes">
+            {errors.phone ? <small className="field-error" role="alert">{errors.phone}</small> : <small className="muted">Private. Shared only with the other person in a sale, after the seller approves it. Leave blank to remove it.</small>}
           </div>
         </div>
         <div className="form-field">

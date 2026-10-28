@@ -3807,3 +3807,45 @@ input:disabled {
   display: grid;
   gap: 4px;
 }
+
+/* --- Contact card for an approved sale --- */
+.contact-card {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 16px 18px;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius-md);
+  background: #eff6ff;
+}
+
+.contact-compact {
+  margin-top: 8px;
+  padding: 10px 12px;
+  gap: 6px;
+}
+
+.contact-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1e3a8a;
+}
+
+.contact-phone {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.contact-compact .contact-phone {
+  font-size: 1.05rem;
+}
+
+.contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

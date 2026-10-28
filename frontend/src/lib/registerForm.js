@@ -1,5 +1,6 @@
 // Rules for the sign-up form. They give instant, specific feedback; the server re-checks everything
 // (including that the address really ends in .edu).
+import { phoneError } from './phone'
 
 export const REQUIRED_EMAIL_SUFFIX = '.edu'
 
@@ -52,6 +53,9 @@ export function validateRegistration(v) {
   const department = v.department.trim()
   if (!department) errors.department = 'Enter your department'
   else if (department.length > 80) errors.department = 'Keep the department under 80 characters'
+
+  const phone = phoneError(v.phone, { required: true })
+  if (phone) errors.phone = phone
 
   if (!v.password) errors.password = 'Choose a password'
   else if (v.password.length < 8) errors.password = 'Use at least 8 characters'

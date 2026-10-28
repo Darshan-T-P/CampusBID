@@ -15,7 +15,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
-from app.models import Listing, ListingStatus
+from app.models import Listing, ListingStatus, User
+from app.schemas.sale import ContactInfo
 from app.services import notifications
 from app.services.auction import begin_write, close_if_due
 from app.services.errors import ListingError
@@ -73,7 +74,8 @@ def approve(db: Session, listing_id: int, user_id: int, now: datetime | None = N
         db, listing_id, user_id, ListingStatus.pending_approval, ListingStatus.reserved,
         lambda l: f"Approved by the seller at {l.current_price}; awaiting handover" + (f" at {l.handover_spot}" if l.handover_spot else ""),
         ("approved", "Sale approved", lambda l: f"The seller approved your bid of ₹{l.current_price}. "
-            + (f"Meet at {l.handover_spot} to hand over the item." if l.handover_spot else "Arrange the handover with the seller.")), now,
+            + (f"Meet at {l.handover_spot} to hand over the item." if l.handover_spot else "Arrange the handover with the seller.")
+            + " Open the listing to see the seller's contact number."), now,
     )
 
 
@@ -103,4 +105,27 @@ def pickup_failed(db: Session, listing_id: int, user_id: int, now: datetime | No
         db, listing_id, user_id, ListingStatus.reserved, ListingStatus.failed_pickup,
         lambda _l: "The winner did not collect the item",
         ("pickup_failed", "Pickup not completed", lambda _l: "The seller recorded that the item was not collected."), now,
+    )
+
+
+def contact_details(db: Session, listing_id: int, user_id: int) -> ContactInfo:
+    """The other side's name and number, for the seller and the winner only, and only once the sale is approved.
+
+    Everywhere else a phone number never leaves the account that owns it.
+    """
+    listing = db.get(Listing, listing_id)
+    if listing is None:
+        raise ListingError("Listing not found", "not_found")
+    winner = notifications.winner_id(db, listing)
+    if user_id not in (listing.seller_id, winner):
+        raise ListingError("Contact details are shared only between the seller and the winner", "forbidden")
+    if listing.status != ListingStatus.reserved:
+        raise ListingError("Contact details are shared once the seller approves the sale", "conflict")
+    seller_side = user_id == listing.seller_id
+    other = db.get(User, winner if seller_side else listing.seller_id)
+    return ContactInfo(
+        role="buyer" if seller_side else "seller",
+        name=other.display_name,
+        phone=other.phone,
+        listing_title=listing.title,
     )

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api, mediaUrl } from '../api/client'
 import { errorMessage } from '../api/errors'
+import { ContactCard } from '../components/ContactCard'
 import { Countdown } from '../components/Countdown'
 import { Icon } from '../components/Icon'
 import { StatusBadge } from '../components/StatusBadge'
@@ -64,6 +65,7 @@ export function MyBids() {
                         <Icon name="pin" size={13} /> Meet at <strong>{row.listing.handover_spot}</strong>
                       </p>
                     )}
+                    {outcome.section === 'won' && row.listing.status === 'reserved' && <ContactCard listingId={row.listing.id} compact />}
                     {row.listing.status === 'active' && maxByListing.has(row.listing.id) && (
                       <p className="muted small">Automatic bidding up to {formatRupees(maxByListing.get(row.listing.id))}</p>
                     )}

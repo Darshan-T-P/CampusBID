@@ -5,7 +5,8 @@ from fastapi import APIRouter, Body
 from app.api.deps import CurrentUser, DbSession
 from app.api.errors import listing_http_error
 from app.schemas.listing import ListingDetail
-from app.schemas.sale import RejectRequest
+from app.core.ratelimit import enforce
+from app.schemas.sale import ContactInfo, RejectRequest
 from app.services import listings as listing_service
 from app.services import sale as sale_service
 from app.services.errors import ListingError
@@ -55,5 +56,15 @@ def pickup_failed(listing_id: int, user: CurrentUser, db: DbSession):
     """Winner never collected it: reserved -> failed_pickup."""
     try:
         return _detail(db, sale_service.pickup_failed(db, listing_id, user.id))
+    except ListingError as e:
+        raise listing_http_error(e) from e
+
+
+@router.get("/listings/{listing_id}/contact", response_model=ContactInfo)
+def contact(listing_id: int, user: CurrentUser, db: DbSession):
+    """The other side's name and mobile number. Only the seller and the winner, only after approval."""
+    enforce(f"contact:user:{user.id}", limit=60, window=600)
+    try:
+        return sale_service.contact_details(db, listing_id, user.id)
     except ListingError as e:
         raise listing_http_error(e) from e

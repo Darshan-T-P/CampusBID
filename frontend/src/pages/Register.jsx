@@ -6,7 +6,7 @@ import { PasswordField } from '../components/PasswordField'
 import { YEARS } from '../lib/format'
 import { DEPARTMENTS, REQUIRED_EMAIL_SUFFIX, passwordStrength, validateRegistration } from '../lib/registerForm'
 
-const EMPTY = { email: '', displayName: '', year: '', department: '', password: '', confirm: '' }
+const EMPTY = { email: '', displayName: '', year: '', department: '', phone: '', password: '', confirm: '' }
 
 export function Register() {
   const { register, isSignedIn, user, loading } = useAuth()
@@ -39,6 +39,7 @@ export function Register() {
       const result = await register(values.email.trim(), values.displayName.trim(), values.password, {
         department: values.department.trim(),
         year_of_study: Number(values.year),
+        phone: values.phone.trim(),
       })
       navigate(result.is_verified ? '/' : '/verify', { replace: true })
     } catch (e) {
@@ -120,6 +121,25 @@ export function Register() {
           </div>
         </div>
         <small className="muted form-aside">Your year and department are shown next to your name on items you sell.</small>
+
+        <div className="form-field">
+          <label htmlFor="reg-phone">Mobile number</label>
+          <input
+            id="reg-phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            maxLength={30}
+            placeholder="98765 43210"
+            value={values.phone}
+            onChange={set('phone')}
+            onBlur={blur('phone')}
+            aria-invalid={errors.phone ? 'true' : undefined}
+          />
+          <div className="field-notes">
+            {errors.phone ? <small className="field-error" role="alert">{errors.phone}</small> : <small className="muted">Private. Only the other person in a sale sees it, and only after the seller approves, so you can arrange the handover.</small>}
+          </div>
+        </div>
 
         <PasswordField
           id="reg-password"

@@ -4,7 +4,7 @@ Someone can leave only when no other student is waiting on them: no open auction
 progress, no lead on an open auction. After that, everything that was only theirs goes (notifications, saved
 auctions, automatic bids, codes). If they never listed or bid, the account row goes too and the email is free
 again. Otherwise the row stays as "Deleted user", because other students' bid histories and sales point at it;
-the email, name, department, year and password are wiped, so nothing identifies them any more.
+the email, name, department, year, phone and password are wiped, so nothing identifies them any more.
 """
 
 from datetime import datetime
@@ -87,6 +87,7 @@ def delete_account(db: Session, user_id: int, now: datetime | None = None) -> st
             user.display_name = "Deleted user"
             user.department = None
             user.year_of_study = None
+            user.phone = None
             user.password_hash = "!deleted"  # matches no password
             user.is_verified = False
             user.password_changed_at = now
