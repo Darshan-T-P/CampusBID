@@ -81,8 +81,8 @@ def create_access_token(user_id: int) -> str:
     return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
 
 
-def decode_access_token(token: str) -> int | None:
-    """Return the user id from a valid token, or None if invalid/expired/missing required claims."""
+def decode_token_claims(token: str) -> tuple[int, int] | None:
+    """(user id, issued-at seconds) from a valid token, or None if invalid/expired/missing required claims."""
     try:
         payload = jwt.decode(
             token,
@@ -90,6 +90,12 @@ def decode_access_token(token: str) -> int | None:
             algorithms=[ALGORITHM],  # pinned: never trust the algorithm named inside the token
             options={"require": ["exp", "sub"]},  # a token that never expires is not acceptable
         )
-        return int(payload["sub"])
-    except (jwt.PyJWTError, KeyError, ValueError):
+        return int(payload["sub"]), int(payload.get("iat", 0))
+    except (jwt.PyJWTError, KeyError, ValueError, TypeError):
         return None
+
+
+def decode_access_token(token: str) -> int | None:
+    """Return the user id from a valid token, or None if invalid/expired/missing required claims."""
+    claims = decode_token_claims(token)
+    return claims[0] if claims else None

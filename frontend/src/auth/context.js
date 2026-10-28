@@ -7,4 +7,6 @@ import { createContext } from 'react'
 //   login(email, password) / register(email, displayName, password, { department, year_of_study })  -> { access_token, is_verified }
 //   logout()    sign out and clear cached data
 //   refreshUser()  re-fetch the profile, e.g. after verifying the email
+//   updateProfile({ display_name, department, year_of_study })  -> the updated user
+//   changePassword(current, next)  -> a fresh token (other devices are signed out)
 export const AuthContext = createContext(null)

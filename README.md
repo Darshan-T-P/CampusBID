@@ -8,7 +8,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-301%20backend%20%2B%2071%20frontend-brightgreen)
+![Tests](https://img.shields.io/badge/tests-319%20backend%20%2B%2083%20frontend-brightgreen)
 
 </div>
 
@@ -33,6 +33,7 @@ public, and only verified campus students can take part.
 - **Selling.** List an item with 1-5 photos, edit it (only the description and photos once bidding starts, with a visible "Edited" marker), or cancel it.
 - **Sale workflow.** When an auction ends with a winner, the seller approves or rejects; after approval they confirm the handover or record that the winner didn't collect.
 - **Notifications.** A bell with an unread badge plus opt-in desktop pop-ups when the tab is in the background: outbid, new bid, you won, approved or rejected, cancelled.
+- **Profile.** A round avatar menu (profile, my listings, my bids, sign out) and a profile page with a summary of what you sell and bid on, editable name, department and year, and a change-password form that signs out your other devices.
 - **My listings and My bids** pages that say, in plain words, what each auction means for you.
 
 ## How an auction works
@@ -148,7 +149,7 @@ No email service is wired up yet, so verification codes only appear in the serve
 |---|---|
 | Passwords | scrypt (N=2^15, r=8, p=3, the OWASP-recommended cost), unique salt per user, cost stored with each hash and upgraded automatically at login |
 | Login | Same response and same work for wrong password and unknown email (no account enumeration by message or timing); rate limited per account and per IP |
-| Tokens | Signed JWTs with the algorithm pinned, an expiry and subject required, 24 h lifetime |
+| Tokens | Signed JWTs with the algorithm pinned, an expiry and subject required, 24 h lifetime; changing the password refuses every older token |
 | Startup | Refuses to start outside dev mode with a missing, short or placeholder `SECRET_KEY`, or without a campus domain list |
 | Accounts | Exact-domain matching (`evilcampus.edu` and `campus.edu.evil.com` fail), `+tag` and case folding, 6-digit codes stored only as keyed hashes, expiry, attempt limit and resend cooldown |
 | Authorisation | Every seller action checks ownership; notifications and "my" pages are scoped to the caller; tested for each endpoint |
@@ -169,8 +170,8 @@ and are per process. The database file is not encrypted at rest (use disk encryp
 ## Tests
 
 ```bash
-cd backend  && .venv/bin/python -m pytest     # 301 tests: rules, races, automatic bidding, security, auth, notifications, seed
-cd frontend && npm test                        # 71 tests: formatting, filters, forms, bid and sign-up logic
+cd backend  && .venv/bin/python -m pytest     # 319 tests: rules, races, automatic bidding, security, auth, notifications, seed
+cd frontend && npm test                        # 83 tests: formatting, filters, forms, bid and sign-up logic
 ```
 
 The concurrency tests prove the lock matters: one transaction holds the write lock while an edit or approval waits,
@@ -202,7 +203,8 @@ frontend/src/
 | Bids | `POST/GET /listings/{id}/bids` |
 | Automatic bidding | `PUT/DELETE /listings/{id}/auto-bid`, `GET /listings/{id}/auto-bids` (public), `GET /me/auto-bids` |
 | Sale | `POST /listings/{id}/approve`, `/reject`, `/handover`, `/pickup-failed` |
-| Mine | `GET /me/listings`, `GET /me/bids` |
+| Mine | `GET /me/listings`, `GET /me/bids`, `GET /me/summary` |
+| Profile | `PATCH /me`, `POST /me/password` |
 | Notifications | `GET /notifications` (`?since_id=` for polling), `POST /notifications/{id}/read`, `/notifications/read-all` |
 
 ## Looking at the database

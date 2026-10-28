@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.core.security import decode_access_token
+from app.core.security import decode_token_claims
 from app.db.session import get_db
 from app.models import User
 
@@ -23,9 +23,12 @@ def get_current_user(
     )
     if creds is None:
         raise unauthorized
-    user_id = decode_access_token(creds.credentials)
-    user = db.get(User, user_id) if user_id is not None else None
+    claims = decode_token_claims(creds.credentials)
+    user = db.get(User, claims[0]) if claims is not None else None
     if user is None:
+        raise unauthorized
+    # A password change signs out everything issued before it (a stolen token dies with the old password).
+    if user.password_changed_at is not None and claims[1] < int(user.password_changed_at.timestamp()):
         raise unauthorized
     return user
 

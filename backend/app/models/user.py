@@ -20,4 +20,6 @@ class User(Base):
     year_of_study: Mapped[int | None] = mapped_column(Integer, default=None)  # 1-5, or 6 for postgraduate
     # Only verified campus emails may list or bid; unverified accounts can browse.
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Login tokens issued before this moment are refused, so changing the password signs out other devices.
+    password_changed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)

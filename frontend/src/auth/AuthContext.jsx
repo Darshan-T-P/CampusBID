@@ -54,6 +54,24 @@ export function AuthProvider({ children }) {
     [applyToken],
   )
 
+  // Edit my name / department / year. The server returns the updated profile, so the header changes at once.
+  const updateProfile = useCallback(
+    async (body) => {
+      const updated = await api('/me', { method: 'PATCH', body })
+      queryClient.setQueryData(['me'], updated)
+      return updated
+    },
+    [queryClient],
+  )
+
+  // Changing the password signs out every OTHER device; this one gets a fresh token and stays signed in.
+  const changePassword = useCallback(async (current, next) => {
+    const result = await api('/me/password', { method: 'POST', body: { current_password: current, new_password: next } })
+    setToken(result.access_token)
+    setTokenState(result.access_token)
+    return result
+  }, [])
+
   const refreshUser = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['me'] })
   }, [queryClient])
@@ -67,8 +85,10 @@ export function AuthProvider({ children }) {
       register,
       logout,
       refreshUser,
+      updateProfile,
+      changePassword,
     }),
-    [token, meQuery.data, meQuery.isPending, login, register, logout, refreshUser],
+    [token, meQuery.data, meQuery.isPending, login, register, logout, refreshUser, updateProfile, changePassword],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

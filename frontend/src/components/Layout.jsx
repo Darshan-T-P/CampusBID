@@ -2,6 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { Icon } from './Icon'
 import { NotificationBell } from './NotificationBell'
+import { UserMenu } from './UserMenu'
 
 const icon = (d) => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -17,7 +18,7 @@ const ICONS = {
 }
 
 export function Layout() {
-  const { user, isSignedIn, logout } = useAuth()
+  const { user, isSignedIn } = useAuth()
 
   return (
     <>
@@ -31,22 +32,12 @@ export function Layout() {
               Browse
             </NavLink>
             <NavLink to="/sell">Sell an item</NavLink>
-            {isSignedIn && <NavLink to="/my/listings">My listings</NavLink>}
-            {isSignedIn && <NavLink to="/my/bids">My bids</NavLink>}
           </nav>
           <div className="topbar-right">
             {isSignedIn ? (
               <>
                 <NotificationBell />
-                {user && (
-                  <div className="user-pill" title={user.email}>
-                    <span className="user-avatar">{user.display_name?.charAt(0).toUpperCase() || 'U'}</span>
-                    <span className="who">{user.display_name}</span>
-                  </div>
-                )}
-                <button className="btn btn-ghost btn-sm" onClick={logout}>
-                  Sign out
-                </button>
+                <UserMenu />
               </>
             ) : (
               <>
