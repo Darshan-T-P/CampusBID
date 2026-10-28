@@ -7,7 +7,13 @@ import { AuthProvider } from './auth/AuthContext'
 import './index.css'
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      staleTime: 10_000, // 10 seconds before considered stale (prevents refetch flicker on back/forward)
+      gcTime: 10 * 60 * 1000, // keep unused data in memory cache for 10 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
 })
 
 createRoot(document.getElementById('root')).render(

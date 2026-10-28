@@ -23,6 +23,9 @@ def make_engine(url: str):
             cur = dbapi_conn.cursor()
             cur.execute("PRAGMA foreign_keys=ON")
             cur.execute("PRAGMA journal_mode=WAL")
+            cur.execute("PRAGMA synchronous=NORMAL")  # fast commits while crash-safe in WAL
+            cur.execute("PRAGMA busy_timeout=5000")  # wait up to 5s on concurrent writes instead of locking
+            cur.execute("PRAGMA cache_size=-64000")  # 64MB RAM cache for hot pages and indexes
             cur.close()
 
     return engine

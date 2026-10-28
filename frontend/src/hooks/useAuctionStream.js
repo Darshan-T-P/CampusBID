@@ -53,6 +53,16 @@ export function useAuctionStream(listingId, currentUserId) {
         }
       })
 
+      eventSource.addEventListener('question_asked', () => {
+        queryClient.invalidateQueries({ queryKey: ['questions', String(listingId)] })
+        queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      })
+
+      eventSource.addEventListener('question_answered', () => {
+        queryClient.invalidateQueries({ queryKey: ['questions', String(listingId)] })
+        queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      })
+
       eventSource.onerror = () => {
         setIsConnected(false)
         // Browser EventSource automatically attempts reconnection

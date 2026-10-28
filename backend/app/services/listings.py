@@ -1,10 +1,12 @@
 """Creating and presenting listings. Bidding and closing rules live in auction.py."""
 
 import enum
+import io
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from PIL import Image, ImageOps
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -96,6 +98,34 @@ def _clean_fields(fields: dict, now: datetime) -> dict:
     return clean
 
 
+MAX_IMAGE_DIMENSION = 1280
+
+
+def _optimize_image(data: bytes, ext: str) -> bytes:
+    """Downscales images exceeding MAX_IMAGE_DIMENSION and re-encodes with optimized compression.
+    If image decoding fails (e.g. truncated or synthetic mock bytes), returns data untouched.
+    """
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            im = ImageOps.exif_transpose(im)
+            if max(im.width, im.height) > MAX_IMAGE_DIMENSION:
+                im.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION), Image.Resampling.LANCZOS)
+            out = io.BytesIO()
+            if ext in ("jpg", "jpeg"):
+                if im.mode not in ("RGB", "L"):
+                    im = im.convert("RGB")
+                im.save(out, format="JPEG", quality=85, optimize=True)
+            elif ext == "png":
+                im.save(out, format="PNG", optimize=True)
+            elif ext == "webp":
+                im.save(out, format="WEBP", quality=85, method=4)
+            else:
+                return data
+            return out.getvalue()
+    except Exception:
+        return data
+
+
 def _write_images(
     listing: Listing, blobs: list[bytes], extensions: list[str], start: int, written: list[Path]
 ) -> None:
@@ -105,7 +135,8 @@ def _write_images(
     for offset, (data, ext) in enumerate(zip(blobs, extensions)):
         name = f"{uuid.uuid4().hex}.{ext}"  # server-chosen name: nothing user-controlled
         path = folder / name
-        path.write_bytes(data)
+        optimized = _optimize_image(data, ext)
+        path.write_bytes(optimized)
         written.append(path)
         listing.images.append(ListingImage(path=f"listings/{listing.id}/{name}", position=start + offset))
 
@@ -232,7 +263,30 @@ def remove_image(
     return listing
 
 
+def seller_record(db: Session, seller: User, now: datetime) -> SellerPublic:
+    """The seller's public details plus a small track record (counts only, nothing about buyers)."""
+    by_status = dict(
+        db.execute(select(Listing.status, func.count()).where(Listing.seller_id == seller.id).group_by(Listing.status)).all()
+    )
+    open_now = db.scalar(
+        select(func.count()).select_from(Listing).where(
+            Listing.seller_id == seller.id, Listing.status == ListingStatus.active, Listing.closes_at > now
+        )
+    )
+    return SellerPublic(
+        id=seller.id,
+        display_name=seller.display_name,
+        department=seller.department,
+        year_of_study=seller.year_of_study,
+        member_since=seller.created_at,
+        items_sold=by_status.get(ListingStatus.completed, 0),
+        listed=sum(n for status, n in by_status.items() if status != ListingStatus.cancelled),
+        open_now=open_now,
+    )
+
+
 def listing_detail(db: Session, listing: Listing, now: datetime | None = None) -> ListingDetail:
+    now = now or utcnow()
     leading_bidder = None
     if listing.leading_bid_id is not None:
         bid = db.get(Bid, listing.leading_bid_id)
@@ -258,14 +312,9 @@ def listing_detail(db: Session, listing: Listing, now: datetime | None = None) -
         extension_count=listing.extension_count,
         images=[f"/media/{img.path}" for img in listing.images],
         image_ids=[img.id for img in listing.images],
-        seller=SellerPublic(
-            id=listing.seller.id,
-            display_name=listing.seller.display_name,
-            department=listing.seller.department,
-            year_of_study=listing.seller.year_of_study,
-        ),
+        seller=seller_record(db, listing.seller, now),
         created_at=listing.created_at,
-        server_time=now or utcnow(),
+        server_time=now,
     )
 
 

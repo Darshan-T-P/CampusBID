@@ -306,5 +306,5 @@ def test_a_listings_seller_shows_department_and_year_but_never_an_email(client):
     })
     headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
     listing = create(client, headers).json()
-    assert listing["seller"] == {"id": 1, "display_name": "Sam", "department": "Mechanical", "year_of_study": 4}
+    assert {k: listing["seller"][k] for k in ("id", "display_name", "department", "year_of_study")} == {"id": 1, "display_name": "Sam", "department": "Mechanical", "year_of_study": 4}
     assert "@" not in client.get(f"/listings/{listing['id']}").text

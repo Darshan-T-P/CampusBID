@@ -31,6 +31,7 @@ const PATHS = {
   zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
   bookmark: <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1z" />,
   award: <><circle cx="12" cy="8" r="6" /><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" /></>,
+  messageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
 }
 
 export function Icon({ name, size = 18, className = '', filled = false }) {

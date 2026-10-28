@@ -208,24 +208,6 @@ export function ListingPage() {
               >
                 <Icon name="shield" size={16} /> Auto-Bids ({autoBidsQuery.data?.length ?? 0})
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === 'qa'}
-                className={`listing-tab-btn ${activeTab === 'qa' ? 'listing-tab-active' : ''}`}
-                onClick={() => setActiveTab('qa')}
-              >
-                <Icon name="messageSquare" size={16} /> Q&A
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === 'safety'}
-                className={`listing-tab-btn ${activeTab === 'safety' ? 'listing-tab-active' : ''}`}
-                onClick={() => setActiveTab('safety')}
-              >
-                <Icon name="pin" size={16} /> Handover & Safety
-              </button>
             </div>
 
             <div className="listing-tab-content">
@@ -346,48 +328,71 @@ export function ListingPage() {
                   <AutoBidList autoBids={autoBidsQuery.data ?? []} />
                 </div>
               )}
-
-              {activeTab === 'qa' && (
-                <div className="tab-pane-qa">
-                  <ListingQA listing={listing} />
-                </div>
-              )}
-
-              {activeTab === 'safety' && (
-                <div className="tab-pane-safety">
-                  <h3 className="section-subtitle">Campus Handover Protocol</h3>
-                  <div className="safety-steps-grid">
-                    <div className="safety-step-card">
-                      <div className="safety-step-num">01</div>
-                      <h4>Verified Student Meeting</h4>
-                      <p>Both buyers and sellers are registered students with verified institutional emails.</p>
-                    </div>
-                    <div className="safety-step-card">
-                      <div className="safety-step-num">02</div>
-                      <h4>Public Campus Spot</h4>
-                      <p>Meet in daylight at {listing.handover_spot || 'a prominent campus spot like the Library Gate or Canteen'}.</p>
-                    </div>
-                    <div className="safety-step-card">
-                      <div className="safety-step-num">03</div>
-                      <h4>Inspect Before Settling</h4>
-                      <p>Check the physical condition, functionality, and serial numbers before making payment.</p>
-                    </div>
-                    <div className="safety-step-card">
-                      <div className="safety-step-num">04</div>
-                      <h4>Direct Peer-to-Peer</h4>
-                      <p>Zero platform commission. Settle directly with UPI or cash, and seller confirms handover.</p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Right Column: Sticky Bidding Console */}
+        {/* Right Column: Sticky Bidding Console, Handover Security, and Q&A */}
         <div className="area-panel">
           <BidPanel listing={listing} myBid={myBid} myMax={myMax} />
           {isSignedIn && listing.status === 'reserved' && <ContactCard listingId={listing.id} />}
+
+          {/* Handover & Security Protocol Card */}
+          <div className="handover-sec-card card">
+            <div className="handover-sec-header">
+              <span className="handover-sec-icon">
+                <Icon name="shield" size={18} />
+              </span>
+              <div>
+                <h3 className="handover-sec-title">Handover & Safety Protocol</h3>
+                <span className="muted small">Safe in-person campus handover</span>
+              </div>
+            </div>
+
+            {listing.handover_spot && (
+              <div className="handover-spot-banner">
+                <Icon name="pin" size={15} />
+                <div className="handover-spot-info">
+                  <span className="handover-spot-sub">Designated Meetup Spot</span>
+                  <strong className="handover-spot-val">{listing.handover_spot}</strong>
+                </div>
+              </div>
+            )}
+
+            <ul className="handover-sec-checklist">
+              <li>
+                <span className="checklist-bullet">01</span>
+                <div>
+                  <strong>Verified Students Only</strong>
+                  <p>Authenticated campus domain email addresses for both buyer and seller.</p>
+                </div>
+              </li>
+              <li>
+                <span className="checklist-bullet">02</span>
+                <div>
+                  <strong>Daylight Public Exchange</strong>
+                  <p>Meet in open, populated campus areas (Library gate, Canteen, Quadrangle).</p>
+                </div>
+              </li>
+              <li>
+                <span className="checklist-bullet">03</span>
+                <div>
+                  <strong>Inspect First, Settle After</strong>
+                  <p>Test item condition and functionality before making any payment.</p>
+                </div>
+              </li>
+              <li>
+                <span className="checklist-bullet">04</span>
+                <div>
+                  <strong>Direct Peer-to-Peer</strong>
+                  <p>Zero platform fees. Pay directly via UPI or cash upon confirmed handover.</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          {/* Questions & Answers */}
+          <ListingQA listing={listing} />
         </div>
       </div>
     </div>

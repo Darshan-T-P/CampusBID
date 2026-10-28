@@ -12,6 +12,11 @@ class SellerPublic(BaseModel):
     display_name: str
     department: str | None = None
     year_of_study: int | None = None
+    # Public track record, so buyers can judge who they are dealing with.
+    member_since: datetime | None = None
+    items_sold: int = 0  # sales completed (handover confirmed)
+    listed: int = 0  # everything they put up for auction, not counting cancelled ones
+    open_now: int = 0  # auctions still taking bids
 
 
 class ListingCard(BaseModel):

@@ -6,12 +6,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import auth, bids, listings, me, notifications, sale, watchlist
+from app.api.routes import auth, bids, listings, me, notifications, questions, sale, watchlist
 from app.core.clock import utcnow
 from app.core.config import settings
 from app.core.middleware import SecurityMiddleware
 from app.db.session import SessionLocal, init_db
 from app.services.closer import run_closer
+from app.api.routes import assistant  # the AI assistant (kept apart so it can be committed on its own)
 
 
 def check_startup_settings() -> None:
@@ -61,6 +62,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(assistant.router)
 app.include_router(auth.router)
 app.include_router(listings.router)
 app.include_router(bids.router)
@@ -68,8 +70,23 @@ app.include_router(sale.router)
 app.include_router(notifications.router)
 app.include_router(me.router)
 app.include_router(watchlist.router)
+app.include_router(questions.router)
+
+
+class CachedStaticFiles(StaticFiles):
+    """Static file handler with aggressive, permanent caching for immutable media assets."""
+
+    def file_response(self, *args, **kwargs):
+        resp = super().file_response(*args, **kwargs)
+        # Media filenames are unique UUID hashes: they never mutate in-place.
+        # Cache for 1 year in browser disk cache, with 304 revalidation support.
+        resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return resp
+
+
 # Uploaded photos. check_dir=False because the folder is created at startup, not import time.
-app.mount("/media", StaticFiles(directory=settings.media_dir, check_dir=False), name="media")
+app.mount("/media", CachedStaticFiles(directory=settings.media_dir, check_dir=False), name="media")
+
 
 
 @app.get("/health", tags=["meta"])
