@@ -16,8 +16,10 @@ The build order and the reasoning behind it are in [docs/PLAN.md](docs/PLAN.md).
 | 2. Auth (register / login / `/me`) | done |
 | 3. Listings, photos, browse/search, edit/cancel, my listings/bids | done |
 | 4. Auction engine, bidding, closing, sale workflow | done |
-| 5. Notifications | |
-| 6–8. Frontend, seed data, demo polish | |
+| 5. Notifications | done |
+| 6. Frontend: scaffold, login/register/verify | done |
+| 6. Frontend: browse, auction page, selling, notifications UI | next |
+| 7–8. Seed data, demo polish | |
 
 ## Run the backend
 
@@ -36,7 +38,21 @@ refuses to start without it unless `DEV_MODE=true`. New users must verify their 
 `DEV_MODE=true` (codes are printed to the server log) and `AUTO_VERIFY=true` (skip the code step).
 No email transport is wired up yet, so a real deployment still needs one.
 
-If you change the models, delete the local `backend/campusbid.db*` files: there are no migrations.
+There are no migrations. On startup the app adds any new columns to an existing local database
+(it never drops or changes data). Renaming or retyping a column still needs the local
+`backend/campusbid.db*` files deleted.
+
+## Run the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev      # http://localhost:5173 (needs the backend running on :8000)
+npm run build    # type-check + production build
+```
+
+The browser calls the backend under `/api`; the Vite dev server proxies that to FastAPI
+(`VITE_API_TARGET` overrides the target, default `http://localhost:8000`).
 
 ## Design notes
 

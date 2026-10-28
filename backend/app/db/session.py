@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import Engine, create_engine, event, inspect
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import settings
@@ -37,7 +37,50 @@ def get_db() -> Iterator[Session]:
         yield session
 
 
-def init_db() -> None:
+def _sql_literal(value: object) -> str:
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, (int, float)):
+        return str(value)
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def add_missing_columns(bind: Engine) -> list[str]:
+    """Add columns the models have but an existing table lacks. Returns what it added.
+
+    `create_all` only creates missing *tables*, so a database made before a column existed
+    would otherwise break with "no such column". This only ever adds columns (never drops or
+    alters), so it cannot lose data. It is a stand-in for real migrations (Alembic), which a
+    renamed or retyped column would still need.
+    """
+    added: list[str] = []
+    inspector = inspect(bind)
+    with bind.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            if not inspector.has_table(table.name):
+                continue
+            existing = {c["name"] for c in inspector.get_columns(table.name)}
+            for column in table.columns:
+                if column.name in existing:
+                    continue
+                ddl = f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {column.type.compile(bind.dialect)}'
+                if not column.nullable:
+                    # A NOT NULL column needs a value for the rows that already exist.
+                    default = column.default
+                    if default is None or not getattr(default, "is_scalar", False):
+                        raise RuntimeError(
+                            f"Cannot add NOT NULL column {table.name}.{column.name} without a simple default. "
+                            "Delete the local database file and restart."
+                        )
+                    ddl += f" NOT NULL DEFAULT {_sql_literal(default.arg)}"
+                conn.exec_driver_sql(ddl)
+                added.append(f"{table.name}.{column.name}")
+    return added
+
+
+def init_db(bind: Engine | None = None) -> None:
     import app.models  # noqa: F401  (register tables on Base.metadata)
 
-    Base.metadata.create_all(engine)
+    bind = bind or engine
+    Base.metadata.create_all(bind)
+    add_missing_columns(bind)
