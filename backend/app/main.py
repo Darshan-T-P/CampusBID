@@ -13,8 +13,18 @@ from app.db.session import SessionLocal, init_db
 from app.services.closer import run_closer
 
 
+def check_startup_settings() -> None:
+    """Refuse to start without a campus-domain allow-list, unless in dev mode."""
+    if not settings.email_domains and not settings.dev_mode:
+        raise RuntimeError(
+            "ALLOWED_EMAIL_DOMAINS is required (e.g. college.edu). "
+            "Set DEV_MODE=true to run without it for local development."
+        )
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    check_startup_settings()
     init_db()
     Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
     closer = None

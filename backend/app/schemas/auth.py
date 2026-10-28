@@ -17,6 +17,8 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    # False means the user must enter their emailed code before they can list or bid.
+    is_verified: bool = False
 
 
 class UserMe(BaseModel):
@@ -27,4 +29,9 @@ class UserMe(BaseModel):
     id: int
     email: EmailStr
     display_name: str
+    is_verified: bool
     created_at: datetime
+
+
+class VerifyRequest(BaseModel):
+    code: str = Field(pattern=r"^\d{6}$", description="The 6-digit code from your email")

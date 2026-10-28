@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import DbSession, VerifiedUser
 from app.models import Listing
 from app.schemas.bid import BidCreate, BidPublic, BidResult
 from app.services import bids as bid_service
@@ -18,7 +18,7 @@ _HTTP_STATUS = {
 
 
 @router.post("/listings/{listing_id}/bids", response_model=BidResult, status_code=status.HTTP_201_CREATED)
-def create_bid(listing_id: int, body: BidCreate, user: CurrentUser, db: DbSession):
+def create_bid(listing_id: int, body: BidCreate, user: VerifiedUser, db: DbSession):
     try:
         bid = place_bid(db, listing_id, user.id, body.amount)
     except BidError as e:

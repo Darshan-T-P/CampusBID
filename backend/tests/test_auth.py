@@ -30,7 +30,7 @@ def test_register_validation(client):
 
 
 def test_register_domain_restriction(client, monkeypatch):
-    monkeypatch.setattr(settings, "allowed_email_domain", "campus.edu")
+    monkeypatch.setattr(settings, "allowed_email_domains", "campus.edu")
     assert register(client, email="x@gmail.com").status_code == 422
     assert register(client, email="x@campus.edu").status_code == 201
 

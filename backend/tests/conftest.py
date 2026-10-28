@@ -4,8 +4,21 @@ from sqlalchemy.orm import sessionmaker
 
 import app.models  # noqa: F401
 from app.core.config import settings
+from app.core.ratelimit import limiter
 from app.db.session import Base, get_db, make_engine
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def account_defaults(monkeypatch):
+    """Keep unrelated tests simple: accounts start verified, no domain rule, no rate limits.
+
+    The account/trust tests (test_accounts.py) switch the real behaviour back on.
+    """
+    monkeypatch.setattr(settings, "auto_verify", True)
+    monkeypatch.setattr(settings, "allowed_email_domains", "")
+    monkeypatch.setattr(settings, "rate_limit_enabled", False)
+    limiter.reset()
 
 
 @pytest.fixture(autouse=True)

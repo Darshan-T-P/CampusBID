@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, VerifiedUser
 from app.models import Category, Condition, Listing, ListingStatus
 from app.schemas.listing import ListingDetail, ListingPage, ListingUpdate
 from app.services import listings as listing_service
@@ -32,7 +32,7 @@ def _read_uploads(files: list[UploadFile]) -> list[bytes]:
 
 @router.post("/listings", response_model=ListingDetail, status_code=status.HTTP_201_CREATED)
 def create_listing(
-    user: CurrentUser,
+    user: VerifiedUser,
     db: DbSession,
     title: Annotated[str, Form(max_length=120)],
     category: Annotated[Category, Form()],
