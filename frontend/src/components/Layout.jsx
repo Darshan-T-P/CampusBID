@@ -34,6 +34,7 @@ export function Layout() {
             </NavLink>
             <NavLink to="/sell">Sell an item</NavLink>
             {isSignedIn && <NavLink to="/watchlist">Watchlist</NavLink>}
+            {isSignedIn && <NavLink to="/assistant">Assistant</NavLink>}
           </nav>
           <div className="topbar-right">
             {isSignedIn ? (

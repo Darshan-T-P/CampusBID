@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     smtp_timeout: int = 15
     email_from: str = "Relay <no-reply@localhost>"
     password_reset_code_ttl_minutes: int = 15
+    # --- AI assistant (Groq, an OpenAI-compatible API). Empty key = the assistant is switched off. ------------
+    groq_api_key: str = ""
+    groq_model: str = "openai/gpt-oss-120b"  # must support tool calling; list what your key can use at /openai/v1/models
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    assistant_timeout: int = 25
     # Demo/dev switch: relaxes the domain requirement and prints verification codes to the log.
     dev_mode: bool = False
     # Skip the email step and mark new accounts verified (demos, local testing).
@@ -49,6 +54,10 @@ class Settings(BaseSettings):
     @property
     def smtp_ready(self) -> bool:
         return self.email_backend == "smtp" and bool(self.smtp_host.strip()) and bool(self.email_from.strip())
+
+    @property
+    def assistant_ready(self) -> bool:
+        return bool(self.groq_api_key.strip())
 
     @property
     def cors_origin_list(self) -> list[str]:

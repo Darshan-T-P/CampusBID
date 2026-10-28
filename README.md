@@ -32,6 +32,7 @@ public, and only verified campus students can take part.
 - **Selling.** List an item with 1-5 photos, edit it (only the description and photos once bidding starts, with a visible "Edited" marker), or cancel it.
 - **Sale workflow.** When an auction ends with a winner, the seller approves or rejects; after approval they confirm the handover or record that the winner didn't collect.
 - **Watchlist and reminders.** Save an auction with the bookmark on a card or the auction page. Saved auctions, and ones you've bid on, send a reminder an hour and five minutes before closing (worded for whether you're leading), and you're told how it ended.
+- **AI assistant.** An Assistant tab where a student can say "find me a cycle under ₹2,000" and get a straight answer from the real open auctions, and ask the app to bid for them. It plays by the same rules as everyone: it never acts without the student's go-ahead (the model has no bidding tool, it can only prepare a confirmation card, and the student's Confirm press makes the normal automatic-bid call), it never goes past the amount the student wrote in the chat (enforced in code, not just in the prompt), and it never sees other students' account details (it is only given public listing facts and the student's own bids). Text inside listings is treated as data, so a listing can't instruct it. Powered by Groq (`GROQ_API_KEY`); switched off when no key is set.
 - **Contact numbers.** Students add a mobile number at sign-up (editable on the profile). It is private: it appears in no public view, and only the seller and the winning buyer can fetch each other's number, and only after the seller approves the sale. It shows as a card with Call, WhatsApp and Copy on the auction page, My bids and My listings, and is wiped if the account is deleted.
 - **Notifications.** A bell with an unread badge plus opt-in desktop pop-ups when the tab is in the background: outbid, closing soon, you won or didn't, ended, approved or rejected, cancelled. They are stored records, so a buyer who was offline finds everything they missed.
 - **Profile.** A round avatar menu (profile, my listings, my bids, sign out), with Watchlist in the top bar and a profile page with a summary of what you sell and bid on, editable name, department and year, a change-password form (unlocked once the current password is confirmed) that signs out your other devices, and account deletion with a typed confirmation. Deletion is refused while others depend on you (open auctions, a lead on an open auction, a sale in progress); afterwards your data is removed and any bids or listings you made stay in others' histories as "Deleted user".
@@ -190,8 +191,8 @@ and are per process. The database file is not encrypted at rest (use disk encryp
 ## Tests
 
 ```bash
-cd backend  && .venv/bin/python -m pytest     # 428 tests: rules, races, automatic bidding, security, auth, email, notifications, seed
-cd frontend && npm test                        # 96 tests: formatting, filters, forms, bid and sign-up logic
+cd backend  && .venv/bin/python -m pytest     # 477 tests: rules, races, automatic bidding, security, auth, email, notifications, seed
+cd frontend && npm test                        # 103 tests: formatting, filters, forms, bid and sign-up logic
 ```
 
 The concurrency tests prove the lock matters: one transaction holds the write lock while an edit or approval waits,
@@ -224,6 +225,7 @@ frontend/src/
 | Automatic bidding | `PUT/DELETE /listings/{id}/auto-bid`, `GET /listings/{id}/auto-bids` (public), `GET /me/auto-bids` |
 | Sale | `POST /listings/{id}/approve`, `/reject`, `/handover`, `/pickup-failed` |
 | Mine | `GET /me/listings`, `GET /me/bids`, `GET /me/summary` |
+| Assistant | `GET /assistant/status`, `POST /assistant/chat` (it can propose; the student confirms through `PUT /listings/{id}/auto-bid`) |
 | Sale contact | `GET /listings/{id}/contact` (seller and winner only, after approval) |
 | Profile | `PATCH /me`, `POST /me/password`, `POST /me/password/check`, `POST /me/delete` |
 | Watchlist | `PUT/DELETE /listings/{id}/watch`, `GET /me/watchlist` |

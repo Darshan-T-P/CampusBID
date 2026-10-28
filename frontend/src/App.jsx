@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import { RequireAuth } from './auth/RequireAuth'
 import { Layout } from './components/Layout'
+import { Assistant } from './pages/Assistant'
 import { Browse } from './pages/Browse'
 import { ListingPage } from './pages/ListingPage'
 import { EditListing } from './pages/EditListing'
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="my/bids" element={<MyBids />} />
           <Route path="verify" element={<Verify />} />
           <Route path="watchlist" element={<Watchlist />} />
+          <Route path="assistant" element={<Assistant />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

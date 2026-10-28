@@ -66,6 +66,9 @@ export function UserMenu() {
           <Link role="menuitem" className="menu-item" to="/my/bids" onClick={close}>
             <Icon name="gavel" size={17} /> My bids
           </Link>
+          <Link role="menuitem" className="menu-item menu-item-mobile" to="/assistant" onClick={close}>
+            <Icon name="zap" size={17} /> Assistant
+          </Link>
           <div className="menu-sep" role="separator" />
           <button
             type="button"
