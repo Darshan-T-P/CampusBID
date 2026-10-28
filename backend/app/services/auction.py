@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
 from app.models import Bid, Listing, ListingStatus
+from app.services.errors import ListingError
 
 
 class BidError(Exception):
@@ -56,7 +57,7 @@ def ensure_closed(db: Session, listing: Listing, now: datetime | None = None) ->
         db.commit()
 
 
-def _begin_write(db: Session) -> None:
+def begin_write(db: Session) -> None:
     """Take SQLite's write lock up front (BEGIN IMMEDIATE).
 
     Without it two racing bids can both read the same current price, both pass the
@@ -76,7 +77,7 @@ def place_bid(
 ) -> Bid:
     """The single entry point for placing a bid. Commits on success; raises BidError."""
     now = now or utcnow()
-    _begin_write(db)
+    begin_write(db)
     try:
         listing = db.scalars(
             select(Listing).where(Listing.id == listing_id).execution_options(populate_existing=True)
@@ -108,10 +109,53 @@ def place_bid(
         raise
 
 
+def lock_listing_for_seller(
+    db: Session, listing_id: int, user_id: int, now: datetime | None = None
+) -> Listing:
+    """Start a seller action (edit, cancel, photo change) on an active listing.
+
+    Takes the write lock first, so the action is serialized with incoming bids: a bid can't
+    slip in between "there are no bids yet" being checked and the change being saved.
+    On success the lock is still held; the caller must commit or roll back.
+    """
+    now = now or utcnow()
+    begin_write(db)
+    try:
+        listing = db.scalars(
+            select(Listing).where(Listing.id == listing_id).execution_options(populate_existing=True)
+        ).one_or_none()
+        if listing is None:
+            raise ListingError("Listing not found", "not_found")
+        if listing.seller_id != user_id:
+            raise ListingError("Only the seller can do that", "forbidden")
+        if close_if_due(listing, now):
+            db.commit()
+            raise ListingError("This auction has already closed", "conflict")
+        if listing.status != ListingStatus.active:
+            raise ListingError(f"Listing is {listing.status.value}, not active", "conflict")
+        return listing
+    except BaseException:
+        db.rollback()
+        raise
+
+
+def cancel_listing(db: Session, listing_id: int, user_id: int, now: datetime | None = None) -> Listing:
+    """Seller withdraws an active listing, even if it already has bids."""
+    listing = lock_listing_for_seller(db, listing_id, user_id, now)
+    try:
+        listing.status = ListingStatus.cancelled
+        listing.outcome_note = "Cancelled by the seller"
+        db.commit()
+        return listing
+    except BaseException:
+        db.rollback()
+        raise
+
+
 def close_due_listings(db: Session, now: datetime | None = None) -> list[Listing]:
     """Sweep: close every active listing whose time has passed. Used by the background task."""
     now = now or utcnow()
-    _begin_write(db)
+    begin_write(db)
     try:
         due = db.scalars(
             select(Listing)

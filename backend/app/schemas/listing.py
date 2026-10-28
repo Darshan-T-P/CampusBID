@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models import Category, Condition, ListingStatus
 
@@ -33,6 +33,26 @@ class ListingPage(BaseModel):
     limit: int
     offset: int
     server_time: datetime
+
+
+class MyBid(BaseModel):
+    """One row of "my bids": the listing, my best bid on it, and whether I'm currently winning."""
+
+    listing: ListingCard
+    my_highest_bid: int
+    is_leading: bool
+
+
+class ListingUpdate(BaseModel):
+    """Fields a seller may change. Anything left out stays as is."""
+
+    title: str | None = Field(default=None, max_length=120)
+    category: Category | None = None
+    condition: Condition | None = None
+    description: str | None = Field(default=None, max_length=5000)
+    starting_price: int | None = Field(default=None, ge=1)
+    min_increment: int | None = Field(default=None, ge=1)
+    closes_at: datetime | None = None
 
 
 class ListingDetail(BaseModel):
