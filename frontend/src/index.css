@@ -5003,19 +5003,6 @@ main:focus {
   color: var(--text-secondary);
 }
 
-.hot-tag {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: rgba(239, 68, 68, 0.92);
-  color: #fff;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: var(--radius-full);
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(2px);
-}
 
 .time-left-tag {
   position: absolute;
@@ -5380,7 +5367,6 @@ main:focus {
   color: var(--accent);
 }
 
-.hot-tag,
 .unfilled-tag,
 .matched-tag {
   display: inline-flex;

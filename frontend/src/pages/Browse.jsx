@@ -60,7 +60,7 @@ export function Browse() {
     staleTime: 45_000,
   })
   const pulse = marketPulseQuery.data
-  const fastMovingItems = pulse?.fast_moving?.filter((item) => item.bid_count > 0 || item.is_hot).slice(0, 4) || []
+  const fastMovingItems = pulse?.fast_moving?.filter((item) => item.bid_count > 0).slice(0, 4) || []
 
   const [showFilters, setShowFilters] = useState(false)
   const { add: addWant } = useWants()

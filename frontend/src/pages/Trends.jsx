@@ -122,7 +122,6 @@ export function Trends() {
                       <Icon name={categoryIcons[item.category] || 'package'} size={32} />
                     </div>
                   )}
-                  {item.is_hot && <span className="hot-tag"><Icon name="trend" size={12} /> Hot</span>}
                   <span className="time-left-tag">
                     {formatRemaining(new Date(item.closes_at).getTime() - now)}
                   </span>
