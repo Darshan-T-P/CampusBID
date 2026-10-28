@@ -94,26 +94,29 @@ export function Layout() {
         )}
       </nav>
 
-      <footer className="footer">
-        <div className="container footer-inner">
-          <div className="footer-col">
-            <span className="brand-name">Re<span className="brand-accent">lay</span></span>
-            <p className="footer-desc">
-              A timed auction marketplace for campus. Students buy and sell used essentials at fair prices.
-            </p>
+      {/* The footer is for visitors. Signed-in students have the avatar menu and tab bar, so it just adds scrolling. */}
+      {!isSignedIn && (
+        <footer className="footer">
+          <div className="container footer-inner">
+            <div className="footer-col">
+              <span className="brand-name">Re<span className="brand-accent">lay</span></span>
+              <p className="footer-desc">
+                A timed auction marketplace for campus. Students buy and sell used essentials at fair prices.
+              </p>
+            </div>
+            <div className="footer-links">
+              <Link to="/">Browse auctions</Link>
+              <Link to="/sell">List an item</Link>
+              {isSignedIn && <Link to="/my/listings">My listings</Link>}
+              {isSignedIn && <Link to="/my/bids">My bids</Link>}
+            </div>
+            <div className="footer-badge">
+              <span className="footer-badge-title"><Icon name="shield" size={16} /> Verified campus students only</span>
+              <small className="muted">Items are handed over in person on campus</small>
+            </div>
           </div>
-          <div className="footer-links">
-            <Link to="/">Browse auctions</Link>
-            <Link to="/sell">List an item</Link>
-            {isSignedIn && <Link to="/my/listings">My listings</Link>}
-            {isSignedIn && <Link to="/my/bids">My bids</Link>}
-          </div>
-          <div className="footer-badge">
-            <span className="footer-badge-title"><Icon name="shield" size={16} /> Verified campus students only</span>
-            <small className="muted">Items are handed over in person on campus</small>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </>
   )
 }

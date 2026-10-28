@@ -115,7 +115,7 @@ a:hover {
 
 .container {
   width: 100%;
-  max-width: 1640px; /* wide screens use their width; brand and avatar sit near the edges, content lines up with them */
+  max-width: 1560px; /* wide screens use their width, but keep a comfortable margin; header and content share it */
   margin: 0 auto;
   padding-inline: clamp(16px, 3vw, 48px);
 }
