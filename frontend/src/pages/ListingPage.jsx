@@ -1,6 +1,6 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ApiError, api } from '../api/client'
 import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
@@ -22,9 +22,28 @@ const IDLE_MS = 20_000 // once it has ended, nothing changes quickly
 export function ListingPage() {
   const { id } = useParams()
   const location = useLocation()
+  const navigate = useNavigate()
   const { isSignedIn, user } = useAuth()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'bids' | 'autobids' | 'safety'
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api(`/listings/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['listings'] })
+      queryClient.invalidateQueries({ queryKey: ['my-listings'] })
+      navigate('/my-listings')
+    },
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: () => api(`/listings/${id}/cancel`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['listing', id] })
+      queryClient.invalidateQueries({ queryKey: ['listings'] })
+      queryClient.invalidateQueries({ queryKey: ['my-listings'] })
+    },
+  })
 
   // Connect real-time Server-Sent Events (SSE) push stream
   const { isConnected: isRealtime } = useAuctionStream(id, user?.id)
@@ -134,10 +153,44 @@ export function ListingPage() {
         <Link to="/" className="back-nav-btn">
           <Icon name="arrowLeft" size={16} /> All auctions
         </Link>
-        {isOpen && user?.id === listing.seller.id && (
-          <Link to={`/listings/${listing.id}/edit`} className="btn btn-ghost btn-sm">
-            Edit listing
-          </Link>
+        {user?.id === listing.seller.id && (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {isOpen && (
+              <Link to={`/listings/${listing.id}/edit`} className="btn btn-ghost btn-sm">
+                Edit listing
+              </Link>
+            )}
+            {isOpen && listing.bid_count > 0 && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ color: 'var(--danger)' }}
+                disabled={cancelMutation.isPending}
+                onClick={() => {
+                  if (window.confirm('Cancel this auction? Active bidders will be notified.')) {
+                    cancelMutation.mutate()
+                  }
+                }}
+              >
+                {cancelMutation.isPending ? 'Cancelling…' : 'Cancel auction'}
+              </button>
+            )}
+            {listing.bid_count === 0 && (listing.status === 'active' || listing.status === 'cancelled' || listing.status === 'unsold') && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ color: 'var(--danger)' }}
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (window.confirm('Permanently delete this listing? This action cannot be undone.')) {
+                    deleteMutation.mutate()
+                  }
+                }}
+              >
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete listing'}
+              </button>
+            )}
+          </div>
         )}
         {isOpen && <WatchButton listingId={listing.id} sellerId={listing.seller.id} />}
       </div>

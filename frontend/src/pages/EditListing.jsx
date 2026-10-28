@@ -113,6 +113,39 @@ function EditForm({ listing }) {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => api(`/listings/${listing.id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-listings'] })
+      queryClient.invalidateQueries({ queryKey: ['listings'] })
+      navigate('/my-listings')
+    },
+    onError: (e) => setServerError(errorMessage(e)),
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: () => api(`/listings/${listing.id}/cancel`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-listings'] })
+      queryClient.invalidateQueries({ queryKey: ['listing', String(listing.id)] })
+      queryClient.invalidateQueries({ queryKey: ['listings'] })
+      navigate(`/listings/${listing.id}`)
+    },
+    onError: (e) => setServerError(errorMessage(e)),
+  })
+
+  function handleDelete() {
+    if (window.confirm('Are you sure you want to permanently delete this listing? This action cannot be undone.')) {
+      deleteMutation.mutate()
+    }
+  }
+
+  function handleCancel() {
+    if (window.confirm('Are you sure you want to cancel this auction? Active bidders will be notified that the listing was withdrawn.')) {
+      cancelMutation.mutate()
+    }
+  }
+
   function onSubmit(event) {
     event.preventDefault()
     if (inFlight.current) return
@@ -199,6 +232,40 @@ function EditForm({ listing }) {
           <Link to={`/listings/${listing.id}`} className="btn btn-ghost">Cancel</Link>
         </div>
       </form>
+
+      {/* Danger Zone: Withdraw / Delete Listing */}
+      <div className="card danger-zone" style={{ marginTop: '24px' }}>
+        <h3 style={{ margin: '0 0 8px', color: 'var(--text)' }}>Withdraw or Delete Listing</h3>
+        {listing.bid_count === 0 ? (
+          <div>
+            <p className="muted small" style={{ marginBottom: '12px' }}>
+              No bids have been placed on this item yet. You can delete it permanently.
+            </p>
+            <button
+              type="button"
+              className="btn btn-danger-text"
+              disabled={deleteMutation.isPending}
+              onClick={handleDelete}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete listing permanently'}
+            </button>
+          </div>
+        ) : (
+          <div>
+            <p className="muted small" style={{ marginBottom: '12px' }}>
+              This auction has {listing.bid_count} {listing.bid_count === 1 ? 'bid' : 'bids'}. You cannot erase other students' bid history, but you can cancel the auction now. Active bidders will be notified.
+            </p>
+            <button
+              type="button"
+              className="btn btn-danger-text"
+              disabled={cancelMutation.isPending}
+              onClick={handleCancel}
+            >
+              {cancelMutation.isPending ? 'Cancelling…' : 'Cancel this auction'}
+            </button>
+          </div>
+        )}
+      </div>
     </section>
   )
 }

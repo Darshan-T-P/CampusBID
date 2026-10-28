@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, mediaUrl } from '../api/client'
@@ -23,6 +23,26 @@ function Row({ listing, notice, onNotice }) {
     enabled: hasWinner,
   })
   const d = detail.data
+
+  const cancelMutation = useMutation({
+    mutationFn: () => api(`/listings/${listing.id}/cancel`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-listings'] })
+      queryClient.invalidateQueries({ queryKey: ['listings'] })
+      onNotice('Auction cancelled.')
+    },
+    onError: (e) => onNotice(errorMessage(e)),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api(`/listings/${listing.id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-listings'] })
+      queryClient.invalidateQueries({ queryKey: ['listings'] })
+      onNotice('Listing deleted permanently.')
+    },
+    onError: (e) => onNotice(errorMessage(e)),
+  })
 
   return (
     <li className="row-card">
@@ -55,13 +75,43 @@ function Row({ listing, notice, onNotice }) {
         )}
         {listing.status === 'reserved' && <ContactCard listingId={listing.id} compact />}
         {!hasWinner && d?.outcome_note && <p className="muted small">{d.outcome_note}</p>}
-        {listing.status === 'active' && (
-          <div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px' }}>
+          {listing.status === 'active' && (
             <Link to={`/listings/${listing.id}/edit`} className="btn btn-ghost btn-sm">
               Edit
             </Link>
-          </div>
-        )}
+          )}
+          {listing.status === 'active' && listing.bid_count > 0 && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ color: 'var(--danger)' }}
+              disabled={cancelMutation.isPending}
+              onClick={() => {
+                if (window.confirm('Cancel this auction? Active bidders will be notified.')) {
+                  cancelMutation.mutate()
+                }
+              }}
+            >
+              {cancelMutation.isPending ? 'Cancelling…' : 'Cancel'}
+            </button>
+          )}
+          {listing.bid_count === 0 && (listing.status === 'active' || listing.status === 'cancelled' || listing.status === 'unsold') && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ color: 'var(--danger)' }}
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (window.confirm('Permanently delete this listing?')) {
+                  deleteMutation.mutate()
+                }
+              }}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </button>
+          )}
+        </div>
         <SellerActions listing={listing} notice={notice} onNotice={onNotice} />
       </div>
     </li>
