@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
 from app.models import Bid, Listing, ListingStatus
+from app.services import notifications
 from app.services.errors import ListingError
 
 
@@ -31,11 +32,13 @@ def min_valid_bid(listing: Listing) -> int:
     return listing.current_price + listing.min_increment
 
 
-def close_if_due(listing: Listing, now: datetime) -> bool:
+def close_if_due(db: Session, listing: Listing, now: datetime) -> bool:
     """Move an active listing past its closing time to its closed state.
 
     Highest bid -> pending_approval (winner is provisional until the seller approves);
-    no bids -> unsold. Returns True if the listing changed. Caller commits.
+    no bids -> unsold. Queues the "won / ended / unsold" notifications. Returns True if the
+    listing changed. The caller holds the write lock and commits, which is what guarantees
+    each listing is closed (and announced) exactly once.
     """
     if listing.status != ListingStatus.active or now < listing.closes_at:
         return False
@@ -45,16 +48,30 @@ def close_if_due(listing: Listing, now: datetime) -> bool:
     else:
         listing.status = ListingStatus.unsold
         listing.outcome_note = "Closed with no bids"
+    notifications.auction_closed(db, listing, now)
     return True
 
 
 def ensure_closed(db: Session, listing: Listing, now: datetime | None = None) -> None:
-    """Lazy close for reads: if the listing is past its time, persist the closed state.
+    """Lazy close for reads: if the listing is past its time, close it now.
 
-    Idempotent, so two readers racing to do it is harmless.
+    The cheap check runs first so ordinary reads never take the write lock. When the listing
+    is overdue we lock, re-read, and re-check: if another request closed it meanwhile this
+    does nothing, so notifications are never sent twice.
     """
-    if close_if_due(listing, now or utcnow()):
+    now = now or utcnow()
+    if listing.status != ListingStatus.active or now < listing.closes_at:
+        return
+    begin_write(db)
+    try:
+        fresh = db.scalars(
+            select(Listing).where(Listing.id == listing.id).execution_options(populate_existing=True)
+        ).one()
+        close_if_due(db, fresh, now)
         db.commit()
+    except BaseException:
+        db.rollback()
+        raise
 
 
 def begin_write(db: Session) -> None:
@@ -86,7 +103,7 @@ def place_bid(
             raise BidError("not_found", "Listing not found")
 
         # Lazy close: a stale background sweep must never let a late bid through.
-        if close_if_due(listing, now):
+        if close_if_due(db, listing, now):
             db.commit()
             raise BidError("closed", "Auction has closed")
         if listing.status != ListingStatus.active:
@@ -97,11 +114,13 @@ def place_bid(
         if amount < minimum:
             raise BidError("too_low", f"Bid must be at least {minimum}", min_bid=minimum)
 
+        previous_leader = notifications.winner_id(db, listing)  # read before the lead changes
         bid = Bid(listing_id=listing.id, bidder_id=bidder_id, amount=amount, created_at=now)
         db.add(bid)
         db.flush()
         listing.current_price = amount
         listing.leading_bid_id = bid.id
+        notifications.bid_placed(db, listing, bid, previous_leader)
         db.commit()
         return bid
     except BaseException:
@@ -128,7 +147,7 @@ def lock_listing_for_seller(
             raise ListingError("Listing not found", "not_found")
         if listing.seller_id != user_id:
             raise ListingError("Only the seller can do that", "forbidden")
-        if close_if_due(listing, now):
+        if close_if_due(db, listing, now):
             db.commit()
             raise ListingError("This auction has already closed", "conflict")
         if listing.status != ListingStatus.active:
@@ -145,6 +164,7 @@ def cancel_listing(db: Session, listing_id: int, user_id: int, now: datetime | N
     try:
         listing.status = ListingStatus.cancelled
         listing.outcome_note = "Cancelled by the seller"
+        notifications.listing_cancelled(db, listing, actor_id=user_id)
         db.commit()
         return listing
     except BaseException:
@@ -173,7 +193,7 @@ def close_due_listings(db: Session, now: datetime | None = None) -> list[Listing
             .where(Listing.status == ListingStatus.active, Listing.closes_at <= now)
             .execution_options(populate_existing=True)
         ).all()
-        closed = [listing for listing in due if close_if_due(listing, now)]
+        closed = [listing for listing in due if close_if_due(db, listing, now)]
         db.commit()
         return closed
     except BaseException:

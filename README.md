@@ -15,7 +15,7 @@ The build order and the reasoning behind it are in [docs/PLAN.md](docs/PLAN.md).
 | 1. Backend skeleton (config, DB, models, health) | done |
 | 2. Auth (register / login / `/me`) | done |
 | 3. Listings, photos, browse/search, edit/cancel, my listings/bids | done |
-| 4. Auction engine, bidding, closing, sale workflow | engine, bid API and background closer done; sale workflow next |
+| 4. Auction engine, bidding, closing, sale workflow | done |
 | 5. Notifications | |
 | 6–8. Frontend, seed data, demo polish | |
 

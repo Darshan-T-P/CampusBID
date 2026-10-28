@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
 from app.models import Listing, ListingStatus
+from app.services import notifications
 from app.services.auction import begin_write, close_if_due
 from app.services.errors import ListingError
 
@@ -38,9 +39,11 @@ def _transition(
     expected: ListingStatus,
     new: ListingStatus,
     note: Callable[[Listing], str],
+    event: tuple[str, str, Callable[[Listing], str]],
     now: datetime | None = None,
 ) -> Listing:
-    """`note` builds the public outcome text from the listing as it stands."""
+    """`note` builds the public outcome text; `event` is (notification type, title, body builder)
+    for the message the winner receives."""
     now = now or utcnow()
     begin_write(db)
     try:
@@ -51,11 +54,13 @@ def _transition(
             raise ListingError("Listing not found", "not_found")
         if listing.seller_id != user_id:
             raise ListingError("Only the seller can do that", "forbidden")
-        close_if_due(listing, now)  # an expired-but-unswept auction becomes pending_approval first
+        close_if_due(db, listing, now)  # an expired-but-unswept auction becomes pending_approval first
         if listing.status != expected:
             raise ListingError(f"This listing {_ALREADY[listing.status]}", "conflict")
         listing.status = new
         listing.outcome_note = note(listing)
+        kind, title, body = event
+        notifications.sale_step(db, listing, user_id, kind, f"{title}: {listing.title}", body(listing))
         db.commit()
         return listing
     except BaseException:
@@ -66,7 +71,8 @@ def _transition(
 def approve(db: Session, listing_id: int, user_id: int, now: datetime | None = None) -> Listing:
     return _transition(
         db, listing_id, user_id, ListingStatus.pending_approval, ListingStatus.reserved,
-        lambda l: f"Approved by the seller at {l.current_price}; awaiting handover", now,
+        lambda l: f"Approved by the seller at {l.current_price}; awaiting handover",
+        ("approved", "Sale approved", lambda l: f"The seller approved your bid of ₹{l.current_price}. Arrange the handover."), now,
     )
 
 
@@ -78,19 +84,22 @@ def reject(
         note += f": {reason.strip()}"
     return _transition(
         db, listing_id, user_id, ListingStatus.pending_approval, ListingStatus.rejected,
-        lambda _l: note, now,
+        lambda _l: note,
+        ("rejected", "Sale rejected", lambda _l: note + "."), now,
     )
 
 
 def confirm_handover(db: Session, listing_id: int, user_id: int, now: datetime | None = None) -> Listing:
     return _transition(
         db, listing_id, user_id, ListingStatus.reserved, ListingStatus.completed,
-        lambda l: f"Handed over; sale completed at {l.current_price}", now,
+        lambda l: f"Handed over; sale completed at {l.current_price}",
+        ("completed", "Sale completed", lambda l: f"Handover confirmed at ₹{l.current_price}. Enjoy!"), now,
     )
 
 
 def pickup_failed(db: Session, listing_id: int, user_id: int, now: datetime | None = None) -> Listing:
     return _transition(
         db, listing_id, user_id, ListingStatus.reserved, ListingStatus.failed_pickup,
-        lambda _l: "The winner did not collect the item", now,
+        lambda _l: "The winner did not collect the item",
+        ("pickup_failed", "Pickup not completed", lambda _l: "The seller recorded that the item was not collected."), now,
     )
