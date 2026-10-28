@@ -31,8 +31,9 @@ public, and only verified campus students can take part.
 - **Handover spot.** Sellers can name where on campus they'll meet (with one-click suggestions). It shows on the card and the auction page, can be changed even after bidding starts, and the winner is told exactly where to meet when the sale is approved.
 - **Selling.** List an item with 1-5 photos, edit it (only the description and photos once bidding starts, with a visible "Edited" marker), or cancel it.
 - **Sale workflow.** When an auction ends with a winner, the seller approves or rejects; after approval they confirm the handover or record that the winner didn't collect.
-- **Notifications.** A bell with an unread badge plus opt-in desktop pop-ups when the tab is in the background: outbid, new bid, you won, approved or rejected, cancelled.
-- **Profile.** A round avatar menu (profile, my listings, my bids, sign out) and a profile page with a summary of what you sell and bid on, editable name, department and year, and a change-password form that signs out your other devices.
+- **Watchlist and reminders.** Save an auction with the bookmark on a card or the auction page. Saved auctions, and ones you've bid on, send a reminder an hour and five minutes before closing (worded for whether you're leading), and you're told how it ended.
+- **Notifications.** A bell with an unread badge plus opt-in desktop pop-ups when the tab is in the background: outbid, closing soon, you won or didn't, ended, approved or rejected, cancelled. They are stored records, so a buyer who was offline finds everything they missed.
+- **Profile.** A round avatar menu (profile, my listings, my bids, sign out), with Watchlist in the top bar and a profile page with a summary of what you sell and bid on, editable name, department and year, and a change-password form that signs out your other devices.
 - **My listings and My bids** pages that say, in plain words, what each auction means for you.
 
 ## How an auction works
@@ -188,7 +189,7 @@ and are per process. The database file is not encrypted at rest (use disk encryp
 ## Tests
 
 ```bash
-cd backend  && .venv/bin/python -m pytest     # 356 tests: rules, races, automatic bidding, security, auth, email, notifications, seed
+cd backend  && .venv/bin/python -m pytest     # 382 tests: rules, races, automatic bidding, security, auth, email, notifications, seed
 cd frontend && npm test                        # 88 tests: formatting, filters, forms, bid and sign-up logic
 ```
 
@@ -223,6 +224,7 @@ frontend/src/
 | Sale | `POST /listings/{id}/approve`, `/reject`, `/handover`, `/pickup-failed` |
 | Mine | `GET /me/listings`, `GET /me/bids`, `GET /me/summary` |
 | Profile | `PATCH /me`, `POST /me/password` |
+| Watchlist | `PUT/DELETE /listings/{id}/watch`, `GET /me/watchlist` |
 | Notifications | `GET /notifications` (`?since_id=` for polling), `POST /notifications/{id}/read`, `/notifications/read-all` |
 
 ## Looking at the database

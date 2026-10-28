@@ -7,6 +7,7 @@ import { useAuth } from '../auth/useAuth'
 import { AutoBidList } from '../components/AutoBidList'
 import { BidHistory } from '../components/BidHistory'
 import { BidPanel } from '../components/BidPanel'
+import { WatchButton } from '../components/WatchButton'
 import { Icon } from '../components/Icon'
 import { ImageGallery } from '../components/ImageGallery'
 import { useAuctionStream } from '../hooks/useAuctionStream'
@@ -135,6 +136,7 @@ export function ListingPage() {
             Edit listing
           </Link>
         )}
+        {isOpen && <WatchButton listingId={listing.id} sellerId={listing.seller.id} />}
       </div>
 
       {/* Title & Status Badges */}

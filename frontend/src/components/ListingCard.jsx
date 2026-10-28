@@ -4,6 +4,7 @@ import { categoryLabel, conditionLabel, formatRupees } from '../lib/format'
 import { useNow } from '../hooks/useNow'
 import { Countdown } from './Countdown'
 import { Icon } from './Icon'
+import { WatchButton } from './WatchButton'
 
 /** One auction in the browse grid. `listing` is a card from GET /listings. */
 export function ListingCard({ listing }) {
@@ -12,6 +13,7 @@ export function ListingCard({ listing }) {
   const endingSoon = msLeft > 0 && msLeft < 60 * 60 * 1000
   const hot = listing.bid_count >= 4
   return (
+    <div className="card-wrap">
     <Link to={`/listings/${listing.id}`} className="listing-card">
       <div className="thumb">
         {listing.thumbnail ? (
@@ -59,5 +61,7 @@ export function ListingCard({ listing }) {
         </div>
       </div>
     </Link>
+    {listing.status === 'active' && <WatchButton listingId={listing.id} sellerId={listing.seller_id} variant="icon" />}
+    </div>
   )
 }

@@ -97,7 +97,7 @@ def test_notify_never_tells_the_person_who_caused_the_event(db_session):
 # --- closing ----------------------------------------------------------------
 
 
-def test_close_with_bids_tells_winner_and_seller_only(client, db_session, lid, seller_h, alice_h, bob_h):
+def test_close_tells_the_winner_the_seller_and_the_other_bidders(client, db_session, lid, seller_h, alice_h, bob_h):
     bid(client, alice_h, lid, 500)
     bid(client, bob_h, lid, 550)
     expire(db_session, lid)
@@ -108,7 +108,9 @@ def test_close_with_bids_tells_winner_and_seller_only(client, db_session, lid, s
     assert "550" in won["body"] and "provisional" in won["body"]
     assert "auction_ended" in types(client, seller_h)
     assert "won" not in types(client, alice_h)  # the loser is not told they won
-    assert types(client, alice_h) == ["outbid"]  # nothing new beyond the earlier outbid
+    lost = [n for n in feed(client, alice_h)["items"] if n["type"] == "lost"]
+    assert len(lost) == 1 and "550" in lost[0]["body"]  # the loser is told the result, plainly
+    assert "lost" not in types(client, bob_h) and "lost" not in types(client, seller_h)
 
 
 def test_unsold_tells_the_seller(client, db_session, lid, seller_h, alice_h):

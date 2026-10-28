@@ -28,6 +28,7 @@ class ListingCard(BaseModel):
     bid_count: int
     closes_at: datetime
     thumbnail: str | None  # first photo URL
+    seller_id: int
     seller_name: str
     handover_spot: str | None = None
 

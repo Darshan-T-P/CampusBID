@@ -11,7 +11,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
-from app.models import Bid, Listing, Notification, User
+from app.models import Bid, Listing, Notification, User, Watch
 
 
 def notify(
@@ -64,9 +64,27 @@ def bid_placed(db: Session, listing: Listing, bid: Bid, previous_leader_id: int 
     )
 
 
+def _followers(db: Session, listing: Listing) -> tuple[set[int], set[int]]:
+    """(people who bid, people who only saved the auction), never the seller."""
+    bidders = set(db.scalars(select(Bid.bidder_id).where(Bid.listing_id == listing.id)).all())
+    watchers = set(db.scalars(select(Watch.user_id).where(Watch.listing_id == listing.id)).all()) - bidders
+    bidders.discard(listing.seller_id)
+    watchers.discard(listing.seller_id)
+    return bidders, watchers
+
+
 def auction_closed(db: Session, listing: Listing, now: datetime) -> None:
     """Called exactly once, at the moment a listing leaves `active` by running out of time."""
     winner = winner_id(db, listing)
+    bidders, watchers = _followers(db, listing)
+    for user_id in bidders - {winner}:
+        notify(
+            db, user_id, "lost", f"You didn't win {listing.title}",
+            f"It ended at ₹{listing.current_price}, above your highest bid.", listing.id, now=now,
+        )
+    for user_id in watchers:
+        result = f"It ended at ₹{listing.current_price}." if winner is not None else "It ended with no bids."
+        notify(db, user_id, "watch_ended", f"{listing.title} has ended", f"An auction you saved is over. {result}", listing.id, now=now)
     if winner is None:
         notify(
             db, listing.seller_id, "unsold", f"{listing.title} ended with no bids",
@@ -87,11 +105,16 @@ def auction_closed(db: Session, listing: Listing, now: datetime) -> None:
 
 
 def listing_cancelled(db: Session, listing: Listing, actor_id: int) -> None:
-    bidders = db.scalars(select(Bid.bidder_id).where(Bid.listing_id == listing.id).distinct()).all()
+    bidders, watchers = _followers(db, listing)
     for bidder in bidders:
         notify(
             db, bidder, "cancelled", f"{listing.title} was cancelled",
             "The seller withdrew this listing, so your bid no longer applies.", listing.id, actor_id=actor_id,
+        )
+    for watcher in watchers:
+        notify(
+            db, watcher, "cancelled", f"{listing.title} was cancelled",
+            "The seller withdrew an auction you saved.", listing.id, actor_id=actor_id,
         )
 
 

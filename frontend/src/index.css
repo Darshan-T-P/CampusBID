@@ -68,8 +68,17 @@
   box-sizing: border-box;
 }
 
+/* The page colour on the root too, and no rubber-band overscroll, so pulling past the top or bottom never
+   reveals a different (white) strip behind the page. */
+html {
+  background: var(--bg);
+  color-scheme: light;
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
+  min-height: 100vh;
   background: var(--bg);
   background-attachment: fixed;
   color: var(--text);
@@ -3686,4 +3695,60 @@ input:disabled {
   .feed-header-right .btn-primary {
     display: none; /* "Sell" is in the tab bar on phones */
   }
+}
+
+/* --- Watchlist: save button on cards and on the listing page --- */
+.card-wrap {
+  position: relative;
+  display: flex;
+}
+
+.card-wrap > .listing-card {
+  flex: 1;
+  min-width: 0;
+}
+
+.watch-fab {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgb(15 23 42 / 0.12);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.94);
+  color: #475569;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.watch-fab:hover:not(:disabled),
+.watch-fab.is-saved {
+  color: #1d4ed8;
+}
+
+.watch-fab:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.watch-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.watch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.watch-btn.is-saved {
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  background: #eff6ff;
 }

@@ -294,6 +294,7 @@ def _card(listing: Listing, bid_count: int) -> ListingCard:
         bid_count=bid_count,
         closes_at=listing.closes_at,
         thumbnail=f"/media/{listing.images[0].path}" if listing.images else None,
+        seller_id=listing.seller_id,
         seller_name=listing.seller.display_name,
         handover_spot=listing.handover_spot,
     )

@@ -13,6 +13,7 @@ import { Profile } from './pages/Profile'
 import { Register } from './pages/Register'
 import { Sell } from './pages/Sell'
 import { Verify } from './pages/Verify'
+import { Watchlist } from './pages/Watchlist'
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="my/listings" element={<MyListings />} />
           <Route path="my/bids" element={<MyBids />} />
           <Route path="verify" element={<Verify />} />
+          <Route path="watchlist" element={<Watchlist />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

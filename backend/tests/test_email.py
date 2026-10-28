@@ -258,6 +258,7 @@ def test_a_deployment_without_email_refuses_to_start(monkeypatch):
     monkeypatch.setattr(settings, "allowed_email_domains", "college.edu")
     monkeypatch.setattr(settings, "secret_key", "k" * 40)
     monkeypatch.setattr(settings, "email_backend", "console")
+    monkeypatch.setattr(settings, "smtp_host", "")  # whatever your own .env says, this test starts unconfigured
     with pytest.raises(RuntimeError, match="Email is not configured"):
         check_startup_settings()
 

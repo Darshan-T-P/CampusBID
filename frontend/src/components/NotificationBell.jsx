@@ -105,7 +105,7 @@ export function NotificationBell() {
           </div>
 
           {items.length === 0 ? (
-            <p className="muted bell-empty">Nothing yet. You'll be told when you're outbid, win, or someone bids on your item.</p>
+            <p className="muted bell-empty">Nothing yet. You'll be told when you're outbid, when an auction you follow is about to close, and how it ended.</p>
           ) : (
             <ul className="bell-list">
               {items.map((n) => (

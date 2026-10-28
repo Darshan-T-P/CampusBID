@@ -29,17 +29,18 @@ const PATHS = {
   arrowLeft: <><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></>,
   check: <polyline points="20 6 9 17 4 12" />,
   zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
+  bookmark: <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1z" />,
   award: <><circle cx="12" cy="8" r="6" /><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" /></>,
 }
 
-export function Icon({ name, size = 18, className = '' }) {
+export function Icon({ name, size = 18, className = '', filled = false }) {
   return (
     <svg
       className={`icon ${className}`}
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? 'currentColor' : 'none'}
       stroke="currentColor"
       strokeWidth="1.8"
       strokeLinecap="round"

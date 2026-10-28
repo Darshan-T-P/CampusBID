@@ -5,11 +5,13 @@ from app.models.listing import Category, Condition, Listing, ListingImage, Listi
 from app.models.notification import Notification
 from app.models.password_reset import PasswordReset
 from app.models.user import User
+from app.models.watch import ClosingReminder, Watch
 
 __all__ = [
     "AutoBid",
     "Bid",
     "Category",
+    "ClosingReminder",
     "Condition",
     "EmailVerification",
     "Listing",
@@ -18,4 +20,5 @@ __all__ = [
     "Notification",
     "PasswordReset",
     "User",
+    "Watch",
 ]
