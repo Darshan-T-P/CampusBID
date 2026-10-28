@@ -80,152 +80,221 @@ export function BidPanel({ listing, myBid, myMax = null }) {
   const hasBids = listing.bid_count > 0
 
   return (
-    <aside className="panel card" aria-label="Bidding">
-      <div className="panel-top">
+    <aside className="panel card panel-console" aria-label="Bidding Console">
+      {/* Top Status & Live Countdown Bar */}
+      <div className="panel-status-header">
         <StatusBadge status={listing.status} />
         {isOpen && (
-          <span key={listing.closes_at} className={listing.closes_at !== firstClose ? 'time-flash' : ''}>
-            <Countdown closesAt={listing.closes_at} className="panel-countdown" />
-          </span>
+          <div key={listing.closes_at} className={`panel-countdown-wrap ${listing.closes_at !== firstClose ? 'time-flash' : ''}`}>
+            <Countdown closesAt={listing.closes_at} className="panel-countdown-tag" />
+          </div>
         )}
       </div>
+
       {isOpen && (
-        <p className="muted small">
-          Closes {new Date(listing.closes_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'medium' })}
+        <div className="panel-closing-row">
+          <Icon name="clock" size={13} className="text-muted" />
+          <span className="muted small">
+            Closes {new Date(listing.closes_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+          </span>
           {listing.extension_count > 0 && (
             <span
               className="extended-chip"
               title="A bid in the last 30 seconds moves the closing time to 60 seconds after that bid"
             >
-              <Icon name="clock" size={12} /> Extended{listing.extension_count > 1 ? ` ${listing.extension_count}×` : ''}
+              Extended{listing.extension_count > 1 ? ` ${listing.extension_count}×` : ''}
             </span>
           )}
-        </p>
-      )}
-      {isOpen && listing.extension_count > 0 && (
-        <p className="warn-box small" role="status">
-          A late bid extended this auction. Bidding stays open until the countdown reaches zero.
-        </p>
+        </div>
       )}
 
-      <div className="panel-price">
-        <span className="price-label">{hasBids ? 'Current bid' : 'Starting price'}</span>
-        <strong key={shownPrice} className={`price-big ${shownPrice !== firstPrice ? 'price-flash' : ''}`} aria-live="polite">
-          {formatRupees(shownPrice)}
-        </strong>
-        <span className="muted small">
-          {listing.bid_count} {listing.bid_count === 1 ? 'bid' : 'bids'}
-          {hasBids && <> · led by {listing.leading_bidder}</>}
-        </span>
+      {isOpen && listing.extension_count > 0 && (
+        <div className="warn-box small" role="status">
+          <Icon name="zap" size={14} /> Late bid extension active. Timer resets to 60s on last-minute bids.
+        </div>
+      )}
+
+      {/* High-Impact Price Hero */}
+      <div className="panel-price-hero">
+        <div className="price-hero-label">
+          {hasBids ? 'Current highest bid' : 'Starting price'}
+        </div>
+        <div className="price-hero-main">
+          <strong key={shownPrice} className={`price-giant ${shownPrice !== firstPrice ? 'price-flash' : ''}`} aria-live="polite">
+            {formatRupees(shownPrice)}
+          </strong>
+        </div>
+        <div className="price-hero-sub">
+          <span className="bid-count-badge">
+            <Icon name="trend" size={12} /> {listing.bid_count} {listing.bid_count === 1 ? 'bid' : 'bids'}
+          </span>
+          {hasBids && (
+            <span className="leader-badge">
+              Leading: <strong>{listing.leading_bidder}</strong>
+            </span>
+          )}
+        </div>
       </div>
 
+      {/* User Standing Callout Banner */}
       {myBid && isOpen && (
-        <p className={myBid.is_leading ? 'success-box' : 'warn-box'} role="status">
-          {myBid.is_leading
-            ? `You're the highest bidder at ${formatRupees(myBid.my_highest_bid)}.`
-            : `You've been outbid. Your best bid was ${formatRupees(myBid.my_highest_bid)}.`}
-        </p>
+        <div className={`standing-banner ${myBid.is_leading ? 'standing-banner-winning' : 'standing-banner-outbid'}`} role="status">
+          {myBid.is_leading ? (
+            <>
+              <Icon name="award" size={18} className="standing-icon" />
+              <div className="standing-text">
+                <strong>You are currently winning!</strong>
+                <span>Highest bid placed: {formatRupees(myBid.my_highest_bid)}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <Icon name="zap" size={18} className="standing-icon" />
+              <div className="standing-text">
+                <strong>You've been outbid!</strong>
+                <span>Your best was {formatRupees(myBid.my_highest_bid)}. Re-bid to take the lead.</span>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {!isOpen && (
-        <>
+        <div className="panel-closed-box">
           <p className="closed-message">{closedMessage(listing)}</p>
           {listing.outcome_note && <p className="muted small">{listing.outcome_note}</p>}
-        </>
+        </div>
       )}
 
-      {isOpen && timeUp && <p className="muted">This auction is closing…</p>}
+      {isOpen && timeUp && <p className="muted center">This auction is closing…</p>}
 
       {isOpen && !timeUp && !isSignedIn && (
-        <Link to="/login" state={{ from: location.pathname }} className="btn btn-primary btn-block">
-          Sign in to bid
-        </Link>
+        <div className="panel-auth-cta">
+          <p className="muted small center">Sign in with your campus email to place a bid</p>
+          <Link to="/login" state={{ from: location.pathname }} className="btn btn-primary btn-block">
+            Sign in to bid
+          </Link>
+        </div>
       )}
+
       {isOpen && !timeUp && isSignedIn && isSeller && (
-        <p className="muted">This is your listing, so you can't bid on it.</p>
+        <div className="panel-seller-note">
+          <Icon name="shield" size={16} />
+          <span>This is your listing. As seller, you cannot bid on your own item.</span>
+        </div>
       )}
+
       {isOpen && !timeUp && isSignedIn && !isSeller && user && !user.is_verified && (
-        <p className="warn-box">
-          Verify your campus email to bid. <Link to="/verify">Enter your code</Link>
-        </p>
+        <div className="warn-box">
+          Verify your campus email to bid. <Link to="/verify">Enter your verification code</Link>
+        </div>
       )}
 
       {isOpen && !timeUp && isSignedIn && !isSeller && user?.is_verified && isLeading && (
-        <p className="muted small">You can bid again if someone outbids you.</p>
+        <p className="muted small center lead-note">
+          You currently hold the highest bid. You can bid again if outbid.
+        </p>
       )}
 
+      {/* Bidding Form */}
       {isOpen && !timeUp && isSignedIn && !isSeller && user?.is_verified && !isLeading && (
-        <form onSubmit={onSubmit} className="bid-form" noValidate>
-          <label htmlFor="bid-amount">Your bid (₹)</label>
-          <div className="bid-row">
-            <input
-              id="bid-amount"
-              inputMode="numeric"
-              autoComplete="off"
-              value={text}
-              onChange={(e) => {
-                setTyped(e.target.value)
-                setTouched(true)
-                setError(null)
-              }}
-              aria-describedby="bid-hint"
-              aria-invalid={error ? 'true' : undefined}
-            />
-            <button className="btn btn-primary" disabled={placeBid.isPending}>
-              {placeBid.isPending ? 'Placing…' : 'Place bid'}
-            </button>
+        <form onSubmit={onSubmit} className="bid-form-modern" noValidate>
+          <div className="bid-input-group">
+            <label htmlFor="bid-amount" className="bid-input-label">
+              <span>Your Bid</span>
+              <span className="bid-min-hint">Min {formatRupees(minBid)}</span>
+            </label>
+            <div className="currency-input-wrap">
+              <span className="currency-prefix">₹</span>
+              <input
+                id="bid-amount"
+                className="bid-input"
+                inputMode="numeric"
+                autoComplete="off"
+                value={text}
+                onChange={(e) => {
+                  setTyped(e.target.value)
+                  setTouched(true)
+                  setError(null)
+                }}
+                aria-describedby="bid-hint"
+                aria-invalid={error ? 'true' : undefined}
+              />
+              <button className="btn btn-primary btn-bid-submit" disabled={placeBid.isPending}>
+                {placeBid.isPending ? 'Placing…' : 'Place Bid'}
+              </button>
+            </div>
           </div>
+
+          {/* Quick-Bid Preset Increment Chips */}
           {minBid != null && (
-            <div className="quick-bids">
-              {[0, listing.min_increment, listing.min_increment * 2, listing.min_increment * 5].map((add, idx) => {
-                const target = minBid + add
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    className="quick-bid-pill"
-                    onClick={() => {
-                      setTyped(String(target))
-                      setTouched(true)
-                      setError(null)
-                    }}
-                  >
-                    {add === 0 ? `Min ₹${target}` : `+₹${add}`}
-                  </button>
-                )
-              })}
+            <div className="quick-bids-row">
+              <span className="quick-bids-label">Quick select:</span>
+              <div className="quick-bids-chips">
+                {[0, listing.min_increment, listing.min_increment * 2, listing.min_increment * 5].map((add, idx) => {
+                  const target = minBid + add
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="quick-chip"
+                      onClick={() => {
+                        setTyped(String(target))
+                        setTouched(true)
+                        setError(null)
+                      }}
+                    >
+                      {add === 0 ? `Min ₹${target}` : `+₹${add}`}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )}
-          <small id="bid-hint" className="muted">
-            Minimum {formatRupees(minBid)} · bids go up by at least {formatRupees(listing.min_increment)}
-          </small>
+
+          <p id="bid-hint" className="bid-increment-hint">
+            Bids must increase by at least {formatRupees(listing.min_increment)}
+          </p>
+
           {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
+            <div className="error-box" role="alert">
+              <Icon name="x" size={14} /> {error}
+            </div>
           )}
-          {notice && <p className="success-box" role="status">{notice}</p>}
+          {notice && (
+            <div className="success-banner" role="status">
+              <Icon name="check" size={14} /> {notice}
+            </div>
+          )}
         </form>
       )}
 
+      {/* Automatic Proxy Bidding Box */}
       {isOpen && !timeUp && isSignedIn && !isSeller && user?.is_verified && (
         <AutoBidBox listing={listing} myMax={myMax} leading={isLeading} />
       )}
 
-      <div className="panel-seller-info">
-        <p className="muted small panel-seller">
-          Sold by <strong>{listing.seller.display_name}</strong>
-          {(listing.seller.department || listing.seller.year_of_study) && (
-            <span className="muted"> · {[yearLabel(listing.seller.year_of_study), listing.seller.department].filter(Boolean).join(', ')}</span>
-          )}
-          <span className="verified-student-chip" title="Verified campus student"><Icon name="shield" size={13} /> Verified</span>
-        </p>
+      {/* Footer Info */}
+      <div className="panel-footer-meta">
+        <div className="footer-seller-row">
+          <div className="footer-seller-text">
+            Listed by <strong>{listing.seller.display_name}</strong>
+            {(listing.seller.department || listing.seller.year_of_study) && (
+              <span className="muted small"> · {[yearLabel(listing.seller.year_of_study), listing.seller.department].filter(Boolean).join(', ')}</span>
+            )}
+          </div>
+          <span className="verified-student-chip" title="Verified campus student">
+            <Icon name="shield" size={12} /> Verified
+          </span>
+        </div>
         {listing.handover_spot && (
-          <p className="panel-spot-note">
-            <Icon name="pin" size={14} /> Meet at <strong>{listing.handover_spot}</strong>
-          </p>
+          <div className="footer-spot-row">
+            <Icon name="pin" size={14} />
+            <span>Meet at <strong>{listing.handover_spot}</strong></span>
+          </div>
         )}
       </div>
     </aside>
   )
 }
+

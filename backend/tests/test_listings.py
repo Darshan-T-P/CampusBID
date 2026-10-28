@@ -40,7 +40,7 @@ def test_create_listing_returns_public_detail(client):
     assert body["current_price"] is None
     assert body["min_next_bid"] == 500  # first bid must meet the starting price
     assert body["bid_count"] == 0 and body["leading_bidder"] is None
-    assert body["seller"] == {"id": 1, "display_name": "Asha"}
+    assert body["seller"] == {"id": 1, "display_name": "Asha", "department": None, "year_of_study": None}
     assert len(body["images"]) == 1 and body["images"][0].startswith("/media/listings/1/")
     assert len(body["image_ids"]) == 1  # ids line up with the URLs, so one photo can be removed
     assert body["images"][0].endswith(".png")

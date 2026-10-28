@@ -67,3 +67,15 @@ export function timeAgo(iso, nowMs) {
   if (hours < 24) return `${hours}h ago`
   return `${Math.floor(hours / 24)}d ago`
 }
+
+export const YEARS = [
+  { value: 1, label: 'First year' },
+  { value: 2, label: 'Second year' },
+  { value: 3, label: 'Third year' },
+  { value: 4, label: 'Fourth year' },
+  { value: 5, label: 'Fifth year' },
+  { value: 6, label: 'Postgraduate' },
+]
+
+/** 4 -> "Fourth year"; null/unknown -> null. */
+export const yearLabel = (value) => YEARS.find((y) => y.value === value)?.label ?? null
