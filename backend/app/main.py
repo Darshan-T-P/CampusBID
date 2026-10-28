@@ -1,4 +1,5 @@
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -8,14 +9,22 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes import auth, bids, listings, me
 from app.core.clock import utcnow
 from app.core.config import settings
-from app.db.session import init_db
+from app.db.session import SessionLocal, init_db
+from app.services.closer import run_closer
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
     Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
+    closer = None
+    if settings.closer_interval_seconds > 0:
+        closer = asyncio.create_task(run_closer(SessionLocal, settings.closer_interval_seconds))
     yield
+    if closer is not None:
+        closer.cancel()
+        with suppress(asyncio.CancelledError):
+            await closer
 
 
 app = FastAPI(title="CampusBid", version="0.1.0", lifespan=lifespan)

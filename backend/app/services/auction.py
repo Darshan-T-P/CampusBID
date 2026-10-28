@@ -152,6 +152,17 @@ def cancel_listing(db: Session, listing_id: int, user_id: int, now: datetime | N
         raise
 
 
+def has_due_listings(db: Session, now: datetime | None = None) -> bool:
+    """Cheap read-only check (no write lock) so an idle sweep never blocks real bids."""
+    now = now or utcnow()
+    due = db.scalar(
+        select(Listing.id)
+        .where(Listing.status == ListingStatus.active, Listing.closes_at <= now)
+        .limit(1)
+    )
+    return due is not None
+
+
 def close_due_listings(db: Session, now: datetime | None = None) -> list[Listing]:
     """Sweep: close every active listing whose time has passed. Used by the background task."""
     now = now or utcnow()
