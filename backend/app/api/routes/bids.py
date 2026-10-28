@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import DbSession, VerifiedUser
 from app.core.ratelimit import enforce
+from app.core.events import broadcaster
 from app.models import Listing
 from app.schemas.bid import AutoBidCreate, AutoBidPublic, AutoBidResult, BidCreate, BidPublic, BidResult
 from app.services import bids as bid_service
@@ -31,9 +32,23 @@ def create_bid(listing_id: int, body: BidCreate, user: VerifiedUser, db: DbSessi
             detail["min_bid"] = e.min_bid
         raise HTTPException(_HTTP_STATUS[e.code], detail) from e
     listing = db.get(Listing, listing_id)
+    public_bid = bid_service.to_public(bid)
+    public_detail = listing_service.listing_detail(db, listing)
+
+    # Real-time event push to all active viewers
+    broadcaster.publish_nowait(
+        "bid",
+        {
+            "listing_id": listing_id,
+            "bid": public_bid.model_dump(mode="json"),
+            "listing": public_detail.model_dump(mode="json"),
+        },
+        listing_id=listing_id,
+    )
+
     return BidResult(
-        bid=bid_service.to_public(bid),
-        listing=listing_service.listing_detail(db, listing),
+        bid=public_bid,
+        listing=public_detail,
     )
 
 
@@ -61,9 +76,23 @@ def put_auto_bid(listing_id: int, body: AutoBidCreate, user: VerifiedUser, db: D
         raise _bid_http_error(e) from e
     listing = db.get(Listing, listing_id)
     db.refresh(listing)  # the resolver may have moved the price
+    public_auto = bid_service.auto_bid_to_public(auto)
+    public_detail = listing_service.listing_detail(db, listing)
+
+    # Real-time event push for auto-bid / proxy updates
+    broadcaster.publish_nowait(
+        "bid",
+        {
+            "listing_id": listing_id,
+            "auto_bid": public_auto.model_dump(mode="json"),
+            "listing": public_detail.model_dump(mode="json"),
+        },
+        listing_id=listing_id,
+    )
+
     return AutoBidResult(
-        auto_bid=bid_service.auto_bid_to_public(auto),
-        listing=listing_service.listing_detail(db, listing),
+        auto_bid=public_auto,
+        listing=public_detail,
     )
 
 

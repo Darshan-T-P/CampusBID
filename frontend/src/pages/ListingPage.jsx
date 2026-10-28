@@ -9,9 +9,10 @@ import { BidHistory } from '../components/BidHistory'
 import { BidPanel } from '../components/BidPanel'
 import { Icon } from '../components/Icon'
 import { ImageGallery } from '../components/ImageGallery'
+import { useAuctionStream } from '../hooks/useAuctionStream'
 import { categoryLabel, conditionLabel, formatRupees, yearLabel } from '../lib/format'
 
-const LIVE_MS = 2500 // while the auction is open, so two browsers see each other's bids almost at once
+const LIVE_MS = 2500 // fallback when real-time push is connecting
 const IDLE_MS = 20_000 // once it has ended, nothing changes quickly
 
 export function ListingPage() {
@@ -21,11 +22,14 @@ export function ListingPage() {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'bids' | 'autobids' | 'safety'
 
-  // The only thing we poll is the listing itself; everything else refreshes when it changes.
+  // Connect real-time Server-Sent Events (SSE) push stream
+  const { isConnected: isRealtime } = useAuctionStream(id, user?.id)
+
+  // Real-time SSE handles immediate pushes; background polling is relaxed to an infrequent fallback.
   const listingQuery = useQuery({
     queryKey: ['listing', id],
     queryFn: () => api(`/listings/${id}`),
-    refetchInterval: (query) => (query.state.data?.status === 'active' ? LIVE_MS : IDLE_MS),
+    refetchInterval: (query) => (query.state.data?.status === 'active' ? (isRealtime ? 60_000 : LIVE_MS) : IDLE_MS),
     retry: (count, error) => !(error instanceof ApiError && error.status < 500) && count < 2,
   })
   const listing = listingQuery.data
@@ -149,8 +153,11 @@ export function ListingPage() {
             </span>
           )}
           {isOpen ? (
-            <span className="listing-badge listing-badge-live">
-              <span className="pulse-dot" /> Live Auction
+            <span
+              className="listing-badge listing-badge-live"
+              title={isRealtime ? 'Connected to live Server-Sent Events push stream' : 'Live Auction'}
+            >
+              <span className="pulse-dot" /> {isRealtime ? 'Live Realtime' : 'Live Auction'}
             </span>
           ) : (
             <span className="listing-badge listing-badge-closed">Bidding closed</span>

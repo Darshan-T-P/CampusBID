@@ -164,3 +164,8 @@ def test_reading_an_expired_listing_closes_it(client, db_session):
     assert r.json()["min_next_bid"] is None  # no more bidding
     db_session.expire_all()
     assert db_session.get(Listing, listing.id).status == ListingStatus.unsold  # persisted
+
+
+def test_stream_unknown_listing_returns_404(client):
+    assert client.get("/listings/99999/stream").status_code == 404
+

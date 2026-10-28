@@ -1,10 +1,14 @@
+import asyncio
 from datetime import datetime
+import json
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi.responses import StreamingResponse
 
 from app.api.deps import CurrentUser, DbSession, VerifiedUser
 from app.api.errors import listing_http_error
+from app.core.events import broadcaster
 from app.core.ratelimit import enforce
 from app.models import Category, Condition, Listing, ListingStatus
 from app.schemas.listing import ListingDetail, ListingPage, ListingUpdate
@@ -139,3 +143,42 @@ def remove_photo(listing_id: int, image_id: int, user: CurrentUser, db: DbSessio
     except ListingError as e:
         raise listing_http_error(e) from e
     return listing_service.listing_detail(db, listing)
+
+
+@router.get("/listings/{listing_id}/stream")
+async def stream_listing_events(listing_id: int, request: Request, db: DbSession):
+    """Server-Sent Events (SSE) push stream for real-time bid updates, extensions, and price changes."""
+    listing = db.get(Listing, listing_id)
+    if listing is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Listing not found")
+
+    async def event_generator():
+        q = await broadcaster.subscribe(listing_id)
+        try:
+            # Initial connect handshake
+            yield f"event: connect\ndata: {json.dumps({'listing_id': listing_id})}\n\n"
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    # Wait for real-time event with 15s keep-alive timeout
+                    msg = await asyncio.wait_for(q.get(), timeout=15.0)
+                    event_type = msg.get("event", "message")
+                    data_str = json.dumps(msg.get("data", {}))
+                    yield f"event: {event_type}\ndata: {data_str}\n\n"
+                except asyncio.TimeoutError:
+                    # Keep-alive heartbeat comment to prevent proxy timeout
+                    yield ": ping\n\n"
+        finally:
+            await broadcaster.unsubscribe(q, listing_id)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
