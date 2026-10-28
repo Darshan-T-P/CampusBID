@@ -24,6 +24,9 @@ export function NotificationBell() {
     queryKey: ['notifications'],
     queryFn: () => api('/notifications?limit=20'),
     refetchInterval: POLL_MS,
+    // Pop-ups are for a tab nobody is looking at, so polling must carry on in the background. By default the
+    // query library pauses interval polling while a tab is hidden, which would silence exactly those alerts.
+    refetchIntervalInBackground: true,
   })
   const items = feed.data?.items ?? []
   const unread = feed.data?.unread_count ?? 0
