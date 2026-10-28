@@ -1,6 +1,6 @@
 // The single place the frontend talks to the backend.
 
-const TOKEN_KEY = 'campusbid.token'
+const TOKEN_KEY = 'relay.token'
 
 // Browser storage can be unavailable (private windows, blocked cookies), so never let it crash the app.
 export function getToken() {

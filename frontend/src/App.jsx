@@ -3,6 +3,7 @@ import { RequireAuth } from './auth/RequireAuth'
 import { Layout } from './components/Layout'
 import { Browse } from './pages/Browse'
 import { ListingPage } from './pages/ListingPage'
+import { EditListing } from './pages/EditListing'
 import { Login } from './pages/Login'
 import { MyBids } from './pages/MyBids'
 import { MyListings } from './pages/MyListings'
@@ -23,6 +24,7 @@ export default function App() {
         {/* Signed-in only. Pages for selling and bidding will live here. */}
         <Route element={<RequireAuth />}>
           <Route path="sell" element={<Sell />} />
+          <Route path="listings/:id/edit" element={<EditListing />} />
           <Route path="my/listings" element={<MyListings />} />
           <Route path="my/bids" element={<MyBids />} />
           <Route path="verify" element={<Verify />} />

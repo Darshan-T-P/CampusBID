@@ -27,6 +27,7 @@ export function BidPanel({ listing, myBid }) {
   const timeUp = Date.parse(listing.closes_at) - now <= 0
   const isSeller = user != null && user.id === listing.seller.id
   const minBid = listing.min_next_bid
+  const isLeading = Boolean(myBid?.is_leading)
 
   const [typed, setTyped] = useState('')
   const [touched, setTouched] = useState(false)
@@ -122,7 +123,11 @@ export function BidPanel({ listing, myBid }) {
         </p>
       )}
 
-      {isOpen && !timeUp && isSignedIn && !isSeller && user?.is_verified && (
+      {isOpen && !timeUp && isSignedIn && !isSeller && user?.is_verified && isLeading && (
+        <p className="muted small">You can bid again if someone outbids you.</p>
+      )}
+
+      {isOpen && !timeUp && isSignedIn && !isSeller && user?.is_verified && !isLeading && (
         <form onSubmit={onSubmit} className="bid-form" noValidate>
           <label htmlFor="bid-amount">Your bid (₹)</label>
           <div className="bid-row">
@@ -143,6 +148,27 @@ export function BidPanel({ listing, myBid }) {
               {placeBid.isPending ? 'Placing…' : 'Place bid'}
             </button>
           </div>
+          {minBid != null && (
+            <div className="quick-bids">
+              {[0, listing.min_increment, listing.min_increment * 2, listing.min_increment * 5].map((add, idx) => {
+                const target = minBid + add
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    className="quick-bid-pill"
+                    onClick={() => {
+                      setTyped(String(target))
+                      setTouched(true)
+                      setError(null)
+                    }}
+                  >
+                    {add === 0 ? `Min ₹${target}` : `+₹${add}`}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           <small id="bid-hint" className="muted">
             Minimum {formatRupees(minBid)} · bids go up by at least {formatRupees(listing.min_increment)}
           </small>

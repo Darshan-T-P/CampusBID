@@ -80,3 +80,57 @@ export function validateListing(values, files, nowMs) {
   if (photos) errors.photos = photos
   return errors
 }
+
+// --- editing an existing listing ---------------------------------------------------------------
+
+/** After the first bid these can no longer change (so bidders aren't misled); the backend enforces it too. */
+export const FROZEN_AFTER_BID = ['title', 'category', 'condition', 'startingPrice', 'minIncrement', 'closesAt']
+
+const FIELD_KEYS = ['title', 'category', 'condition', 'description', 'startingPrice', 'minIncrement', 'closesAt']
+const API_NAME = {
+  title: 'title',
+  category: 'category',
+  condition: 'condition',
+  description: 'description',
+  startingPrice: 'starting_price',
+  minIncrement: 'min_increment',
+  closesAt: 'closes_at',
+}
+
+/** A listing from the API -> the form's text fields. */
+export function valuesFromListing(listing) {
+  return {
+    title: listing.title,
+    category: listing.category,
+    condition: listing.condition,
+    description: listing.description ?? '',
+    startingPrice: String(listing.starting_price),
+    minIncrement: String(listing.min_increment),
+    closesAt: toLocalInputValue(new Date(listing.closes_at)),
+  }
+}
+
+/** Which form fields differ from how the listing was loaded. */
+export function changedFields(initial, values) {
+  const norm = (key, v) => (key === 'title' || key === 'description' || key === 'startingPrice' || key === 'minIncrement' ? v.trim() : v)
+  return FIELD_KEYS.filter((key) => norm(key, initial[key]) !== norm(key, values[key]))
+}
+
+/** Validate ONLY what the seller changed: an untouched closing time that is now close to ending is not their mistake. */
+export function validateEdit(values, changed, nowMs) {
+  const all = validateListing(values, [], nowMs)
+  return Object.fromEntries(Object.entries(all).filter(([key]) => changed.includes(key)))
+}
+
+/** The changed fields as the PATCH body the API expects (numbers as numbers, time as an absolute UTC moment). */
+export function toPatch(values, changed) {
+  const body = {}
+  for (const key of changed) {
+    let value = values[key]
+    if (key === 'title' || key === 'description') value = value.trim()
+    if (key === 'startingPrice' || key === 'minIncrement') value = parseAmount(value)
+    if (key === 'closesAt') value = parseLocalInput(value).toISOString()
+    body[API_NAME[key]] = value
+  }
+  return body
+}

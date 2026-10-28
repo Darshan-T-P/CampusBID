@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
+  FROZEN_AFTER_BID,
   MAX_PHOTO_BYTES,
+  changedFields,
   parseLocalInput,
   toLocalInputValue,
+  toPatch,
+  validateEdit,
   validateListing,
   validatePhotos,
+  valuesFromListing,
 } from './listingForm'
 
 const NOW = Date.parse('2026-05-01T12:00:00Z')
@@ -75,5 +80,50 @@ describe('validateListing', () => {
   })
   it('rejects a closing time that is not a real date', () => {
     expect(validateListing({ ...good(), closesAt: 'soon' }, [png()], NOW).closesAt).toMatch(/valid/)
+  })
+})
+
+describe('editing a listing', () => {
+  const listing = {
+    title: 'Hero cycle',
+    category: 'cycle',
+    condition: 'good',
+    description: 'Barely used',
+    starting_price: 500,
+    min_increment: 50,
+    closes_at: new Date(NOW + 5 * 3600 * 1000).toISOString(),
+  }
+  const initial = valuesFromListing(listing)
+
+  it('fills the form from the listing', () => {
+    expect(initial).toMatchObject({ title: 'Hero cycle', startingPrice: '500', minIncrement: '50', description: 'Barely used' })
+    expect(parseLocalInput(initial.closesAt)).not.toBeNull()
+  })
+  it('reports nothing changed for an untouched form (even with stray spaces)', () => {
+    expect(changedFields(initial, initial)).toEqual([])
+    expect(changedFields(initial, { ...initial, title: '  Hero cycle ' })).toEqual([])
+  })
+  it('reports exactly the fields that changed', () => {
+    expect(changedFields(initial, { ...initial, description: 'New', startingPrice: '600' })).toEqual(['description', 'startingPrice'])
+  })
+  it('builds a PATCH body with real numbers and an absolute closing time', () => {
+    const values = { ...initial, startingPrice: '600', closesAt: inHours(48), title: ' New title ' }
+    const body = toPatch(values, ['title', 'startingPrice', 'closesAt'])
+    expect(body.title).toBe('New title')
+    expect(body.starting_price).toBe(600)
+    expect(typeof body.closes_at).toBe('string')
+    expect(body.closes_at.endsWith('Z')).toBe(true)
+    expect(Object.keys(body)).toEqual(['title', 'starting_price', 'closes_at'])
+  })
+  it('only validates what was changed', () => {
+    // The closing time is only 5 minutes away now: not the seller's fault if they just fix a typo.
+    const soon = { ...initial, closesAt: toLocalInputValue(new Date(NOW + 5 * 60 * 1000)), description: 'Fixed typo' }
+    expect(validateEdit(soon, ['description'], NOW)).toEqual({})
+    expect(validateEdit(soon, ['closesAt'], NOW).closesAt).toMatch(/at least 10 minutes/)
+    expect(validateEdit({ ...initial, startingPrice: '0' }, ['startingPrice'], NOW).startingPrice).toBeTruthy()
+  })
+  it('freezes everything but the description once bidding has started', () => {
+    expect(FROZEN_AFTER_BID).not.toContain('description')
+    expect(FROZEN_AFTER_BID).toHaveLength(6)
   })
 })

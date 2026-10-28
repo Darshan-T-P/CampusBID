@@ -48,6 +48,13 @@ function Row({ listing, notice, onNotice }) {
           </p>
         )}
         {!hasWinner && d?.outcome_note && <p className="muted small">{d.outcome_note}</p>}
+        {listing.status === 'active' && (
+          <div>
+            <Link to={`/listings/${listing.id}/edit`} className="btn btn-ghost btn-sm">
+              Edit
+            </Link>
+          </div>
+        )}
         <SellerActions listing={listing} notice={notice} onNotice={onNotice} />
       </div>
     </li>

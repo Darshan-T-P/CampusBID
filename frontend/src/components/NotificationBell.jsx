@@ -42,7 +42,7 @@ export function NotificationBell() {
     lastSeen.current = Math.max(lastSeen.current, maxId)
     if (fresh.length === 0 || !document.hidden || !canPopUp() || Notification.permission !== 'granted') return
     for (const n of fresh.slice(-MAX_POPUPS)) {
-      const popup = new Notification(n.title, { body: n.body, tag: `campusbid-${n.id}` })
+      const popup = new Notification(n.title, { body: n.body, tag: `relay-${n.id}` })
       popup.onclick = () => {
         window.focus()
         if (n.listing_id) navigate(`/listings/${n.listing_id}`)

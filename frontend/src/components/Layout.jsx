@@ -10,7 +10,12 @@ export function Layout() {
       <header className="topbar">
         <div className="container topbar-inner">
           <Link to="/" className="brand">
-            CampusBid
+            <span className="brand-badge" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+            </span>
+            <span className="brand-name">Re<span className="brand-accent">lay</span></span>
           </Link>
           <nav className="nav">
             <NavLink to="/" end>
@@ -24,8 +29,13 @@ export function Layout() {
             {isSignedIn ? (
               <>
                 <NotificationBell />
-                {user && <span className="who">{user.display_name}</span>}
-                <button className="btn btn-ghost" onClick={logout}>
+                {user && (
+                  <div className="user-pill" title={user.email}>
+                    <span className="user-avatar">{user.display_name?.charAt(0).toUpperCase() || 'U'}</span>
+                    <span className="who">{user.display_name}</span>
+                  </div>
+                )}
+                <button className="btn btn-ghost btn-sm" onClick={logout}>
                   Sign out
                 </button>
               </>

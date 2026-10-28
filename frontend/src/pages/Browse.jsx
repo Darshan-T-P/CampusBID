@@ -48,13 +48,20 @@ export function Browse() {
 
   return (
     <section>
-      <div className="browse-head">
-        <h1>Browse auctions</h1>
-        {data && !priceRangeInvalid && (
-          <p className="muted" aria-live="polite">
-            {data.total} {data.total === 1 ? 'auction' : 'auctions'} open
-            {filtered ? ' matching your filters' : ''}
+      <div className="browse-hero">
+        <div className="browse-hero-main">
+          <span className="badge badge-info hero-tag">🎓 Campus Marketplace</span>
+          <h1 className="browse-hero-title">Live Campus Auctions</h1>
+          <p className="browse-hero-subtitle">
+            Bid on cycles, calculators, books & dorm essentials from graduating seniors. Transparent timers, verified students only.
           </p>
+        </div>
+        {data && !priceRangeInvalid && (
+          <div className="browse-stat-card">
+            <span className="browse-stat-num">{data.total}</span>
+            <span className="browse-stat-label">{data.total === 1 ? 'auction live' : 'auctions live'}</span>
+            {filtered && <span className="browse-stat-sub">(filtered)</span>}
+          </div>
         )}
       </div>
 
@@ -108,7 +115,7 @@ export function Browse() {
             ))}
           </select>
         </label>
-        <label className="filter-check" title="Auctions ending within the next hour">
+        <label className="filter-check" title="Auctions ending within the next 24 hours">
           <input
             type="checkbox"
             checked={filters.closingSoon}

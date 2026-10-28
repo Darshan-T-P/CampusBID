@@ -6,9 +6,13 @@ import { formatRemaining, urgencyOf } from '../lib/format'
 export function Countdown({ closesAt, className = '' }) {
   const now = useNow()
   const remaining = Date.parse(closesAt) - now
+  const urgency = urgencyOf(remaining)
+  const isLive = remaining > 0
+
   return (
-    <span className={`countdown countdown-${urgencyOf(remaining)} ${className}`} title={new Date(closesAt).toLocaleString()}>
-      {remaining > 0 ? `${formatRemaining(remaining)} left` : 'Ended'}
+    <span className={`countdown countdown-${urgency} ${className}`} title={new Date(closesAt).toLocaleString()}>
+      {isLive && <span className={`countdown-pulse countdown-pulse-${urgency}`} aria-hidden="true" />}
+      {isLive ? `${formatRemaining(remaining)} left` : 'Ended'}
     </span>
   )
 }

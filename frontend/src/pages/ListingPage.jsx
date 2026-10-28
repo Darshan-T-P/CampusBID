@@ -15,7 +15,7 @@ const IDLE_MS = 20_000 // once it has ended, nothing changes quickly
 export function ListingPage() {
   const { id } = useParams()
   const location = useLocation()
-  const { isSignedIn } = useAuth()
+  const { isSignedIn, user } = useAuth()
   const queryClient = useQueryClient()
 
   // The only thing we poll is the listing itself; everything else refreshes when it changes.
@@ -53,9 +53,9 @@ export function ListingPage() {
   }, [marker, id, queryClient])
 
   useEffect(() => {
-    if (listing) document.title = `${listing.title} · CampusBid`
+    if (listing) document.title = `${listing.title} · Relay`
     return () => {
-      document.title = 'CampusBid'
+      document.title = 'Relay'
     }
   }, [listing?.title]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -81,6 +81,11 @@ export function ListingPage() {
 
   return (
     <section>
+      {location.state?.saved && (
+        <p className="success-box" role="status">
+          Changes saved.
+        </p>
+      )}
       {location.state?.published && (
         <p className="success-box" role="status">
           Your listing is live! Students can start bidding now.
@@ -89,7 +94,14 @@ export function ListingPage() {
       <p className="crumbs">
         <Link to="/">← All auctions</Link>
       </p>
-      <h1 className="listing-h1">{listing.title}</h1>
+      <div className="page-head">
+        <h1 className="listing-h1">{listing.title}</h1>
+        {isOpen && user?.id === listing.seller.id && (
+          <Link to={`/listings/${listing.id}/edit`} className="btn btn-ghost btn-sm">
+            Edit listing
+          </Link>
+        )}
+      </div>
       <div className="chips">
         <span className="chip">{categoryLabel(listing.category)}</span>
         <span className="chip">{conditionLabel(listing.condition)}</span>
@@ -107,6 +119,11 @@ export function ListingPage() {
         <div className="area-about">
           <h2>About this item</h2>
           <p className="description">{listing.description || 'The seller has not added a description.'}</p>
+          {listing.edited_at && (
+            <p className="muted small edited-note">
+              Edited {new Date(listing.edited_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+            </p>
+          )}
         </div>
       </div>
 
