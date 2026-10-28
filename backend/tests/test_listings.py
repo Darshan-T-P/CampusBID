@@ -42,6 +42,7 @@ def test_create_listing_returns_public_detail(client):
     assert body["bid_count"] == 0 and body["leading_bidder"] is None
     assert body["seller"] == {"id": 1, "display_name": "Asha"}
     assert len(body["images"]) == 1 and body["images"][0].startswith("/media/listings/1/")
+    assert len(body["image_ids"]) == 1  # ids line up with the URLs, so one photo can be removed
     assert body["images"][0].endswith(".png")
     assert "email" not in r.text  # sellers are identified by display name only
 
@@ -64,7 +65,20 @@ def test_closes_at_must_be_in_the_future(client):
     past = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
     r = create(client, headers, closes_at=past)
     assert r.status_code == 422
-    assert "future" in r.json()["detail"]
+    assert "at least 10 minutes" in r.json()["detail"]
+
+
+def test_closing_window_is_10_minutes_to_30_days(client):
+    headers = auth_header(client)
+
+    def attempt(**delta):
+        return create(client, headers, closes_at=(datetime.now(timezone.utc) + timedelta(**delta)).isoformat())
+
+    assert attempt(minutes=5).status_code == 422  # too short
+    assert attempt(minutes=11).status_code == 201  # just long enough
+    assert attempt(days=29).status_code == 201
+    too_long = attempt(days=31)
+    assert too_long.status_code == 422 and "at most 30 days" in too_long.json()["detail"]
 
 
 def test_closes_at_needs_a_timezone(client):
@@ -79,6 +93,13 @@ def test_price_rules(client):
     headers = auth_header(client)
     assert create(client, headers, starting_price="0").status_code == 422
     assert create(client, headers, min_increment="0").status_code == 422
+
+
+def test_price_caps(client):
+    headers = auth_header(client)
+    assert create(client, headers, starting_price="10000000").status_code == 201  # the cap itself is fine
+    assert create(client, headers, starting_price="10000001").status_code == 422
+    assert create(client, headers, min_increment="10000001").status_code == 422
 
 
 def test_blank_title_rejected(client):

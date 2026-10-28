@@ -302,7 +302,8 @@ def test_my_bids_tracks_leading_and_outbid(client, db_session, seller_h, bidder)
     c = new_listing(client, seller_h, title="C (never bid)")
 
     place_bid(db_session, a, bidder.id, 100)
-    place_bid(db_session, a, bidder.id, 150)  # my best on A is 150
+    place_bid(db_session, a, rival.id, 150)
+    place_bid(db_session, a, bidder.id, 200)  # my best on A is 200, and I'm back in front
     place_bid(db_session, b, bidder.id, 100)
     place_bid(db_session, b, rival.id, 200)  # I'm outbid on B
 
@@ -310,7 +311,7 @@ def test_my_bids_tracks_leading_and_outbid(client, db_session, seller_h, bidder)
     h = {"Authorization": f"Bearer {create_access_token(bidder.id)}"}
     rows = {row["listing"]["title"]: row for row in client.get("/me/bids", headers=h).json()}
     assert set(rows) == {"A", "B"}  # C is excluded
-    assert rows["A"]["my_highest_bid"] == 150 and rows["A"]["is_leading"] is True
+    assert rows["A"]["my_highest_bid"] == 200 and rows["A"]["is_leading"] is True
     assert rows["B"]["my_highest_bid"] == 100 and rows["B"]["is_leading"] is False
     assert rows["B"]["listing"]["price"] == 200 and rows["B"]["listing"]["bid_count"] == 2
     assert client.get("/me/bids").status_code == 401
@@ -318,3 +319,32 @@ def test_my_bids_tracks_leading_and_outbid(client, db_session, seller_h, bidder)
 
 def test_my_bids_empty(client, seller_h):
     assert client.get("/me/bids", headers=seller_h).json() == []
+
+
+# --- edit rules added in plan v3: window, caps, "edited at" marker ---------------
+
+
+def test_edit_keeps_the_closing_window_and_price_caps(client, seller_h):
+    lid = new_listing(client, seller_h)
+    soon = (datetime.now(timezone.utc) + timedelta(minutes=3)).isoformat()
+    far = (datetime.now(timezone.utc) + timedelta(days=45)).isoformat()
+    assert patch(client, seller_h, lid, closes_at=soon).status_code == 422
+    assert patch(client, seller_h, lid, closes_at=far).status_code == 422
+    assert patch(client, seller_h, lid, starting_price=10_000_001).status_code == 422
+    assert patch(client, seller_h, lid, min_increment=10_000_001).status_code == 422
+    assert patch(client, seller_h, lid, starting_price=10_000_000).status_code == 200
+
+
+def test_edited_at_is_empty_until_the_seller_changes_something(client, seller_h):
+    lid = new_listing(client, seller_h)
+    assert client.get(f"/listings/{lid}").json()["edited_at"] is None
+
+    r = patch(client, seller_h, lid, description="Now with a bell")
+    assert r.json()["edited_at"] is not None  # visible to everyone from now on
+    assert client.get(f"/listings/{lid}").json()["edited_at"] == r.json()["edited_at"]
+
+
+def test_photo_changes_also_count_as_edits(client, media_dir, seller_h):
+    lid = new_listing(client, seller_h)
+    r = client.post(f"/listings/{lid}/images", headers=seller_h, files=[("images", ("b.jpg", JPEG, "image/jpeg"))])
+    assert r.json()["edited_at"] is not None

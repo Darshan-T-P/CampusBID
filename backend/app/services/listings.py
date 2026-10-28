@@ -18,7 +18,10 @@ from app.services.errors import ListingError
 MIN_IMAGES = 1
 MAX_IMAGES = 5
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
-CLOSING_SOON = timedelta(hours=1)  # the "closing soon" filter window
+CLOSING_SOON = timedelta(hours=24)  # the "closing soon" filter window
+MIN_DURATION = timedelta(minutes=10)  # an auction needs a fair chance to be seen
+MAX_DURATION = timedelta(days=30)
+MAX_PRICE = 10_000_000  # whole rupees: caps the starting price, the minimum raise and any bid
 
 
 # Once a bid exists, these are frozen so bidders aren't misled about what they're bidding on.
@@ -72,11 +75,15 @@ def _clean_fields(fields: dict, now: datetime) -> dict:
         elif key in ("starting_price", "min_increment"):
             if value < 1:
                 raise ListingError("Starting price and minimum increment must be at least 1")
+            if value > MAX_PRICE:
+                raise ListingError(f"Starting price and minimum increment can be at most {MAX_PRICE}")
         elif key == "closes_at":
             if value.tzinfo is None:
                 raise ListingError("closes_at must include a timezone, e.g. 2026-05-01T18:00:00Z")
-            if value <= now:
-                raise ListingError("closes_at must be in the future")
+            if value < now + MIN_DURATION:
+                raise ListingError("The auction must run for at least 10 minutes")
+            if value > now + MAX_DURATION:
+                raise ListingError("The auction can run for at most 30 days")
         clean[key] = value
     return clean
 
@@ -166,6 +173,7 @@ def update_listing(
                 )
         for key, value in _clean_fields(changes, now).items():
             setattr(listing, key, value)
+        listing.edited_at = now
         db.commit()
         return listing
     except BaseException:
@@ -182,6 +190,7 @@ def add_images(
         extensions = _validate_images(blobs, existing=len(listing.images))
         start = max((img.position for img in listing.images), default=-1) + 1
         _write_images(listing, blobs, extensions, start, written)
+        listing.edited_at = now or utcnow()
         db.commit()
         return listing
     except BaseException:
@@ -204,6 +213,7 @@ def remove_image(
         listing.images.remove(image)  # delete-orphan cascade removes the row
         for position, remaining in enumerate(listing.images):
             remaining.position = position  # keep positions contiguous
+        listing.edited_at = now or utcnow()
         db.commit()
     except BaseException:
         db.rollback()
@@ -233,7 +243,9 @@ def listing_detail(db: Session, listing: Listing, now: datetime | None = None) -
         bid_count=bid_count,
         leading_bidder=leading_bidder,
         outcome_note=listing.outcome_note,
+        edited_at=listing.edited_at,
         images=[f"/media/{img.path}" for img in listing.images],
+        image_ids=[img.id for img in listing.images],
         seller=SellerPublic(id=listing.seller.id, display_name=listing.seller.display_name),
         created_at=listing.created_at,
         server_time=now or utcnow(),

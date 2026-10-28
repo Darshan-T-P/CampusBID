@@ -10,7 +10,7 @@ from app.schemas.listing import ListingDetail, ListingPage, ListingUpdate
 from app.services import listings as listing_service
 from app.services.auction import cancel_listing, ensure_closed
 from app.services.errors import ListingError
-from app.services.listings import MAX_IMAGE_BYTES, Sort
+from app.services.listings import MAX_IMAGE_BYTES, MAX_PRICE, Sort
 
 router = APIRouter(tags=["listings"])
 
@@ -26,9 +26,9 @@ def create_listing(
     title: Annotated[str, Form(max_length=120)],
     category: Annotated[Category, Form()],
     condition: Annotated[Condition, Form()],
-    starting_price: Annotated[int, Form(ge=1)],
+    starting_price: Annotated[int, Form(ge=1, le=MAX_PRICE)],
     closes_at: Annotated[datetime, Form()],
-    min_increment: Annotated[int, Form(ge=1)] = 1,
+    min_increment: Annotated[int, Form(ge=1, le=MAX_PRICE)] = 1,
     description: Annotated[str, Form(max_length=5000)] = "",
     images: Annotated[list[UploadFile], File()] = [],
 ):

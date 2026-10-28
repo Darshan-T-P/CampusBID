@@ -110,11 +110,13 @@ def place_bid(
             raise BidError("closed", "Auction is not open for bids")
         if bidder_id == listing.seller_id:
             raise BidError("own_listing", "You cannot bid on your own listing")
+        previous_leader = notifications.winner_id(db, listing)
+        if previous_leader == bidder_id:
+            raise BidError("already_leading", "You already have the highest bid")
         minimum = min_valid_bid(listing)
         if amount < minimum:
             raise BidError("too_low", f"Bid must be at least {minimum}", min_bid=minimum)
 
-        previous_leader = notifications.winner_id(db, listing)  # read before the lead changes
         bid = Bid(listing_id=listing.id, bidder_id=bidder_id, amount=amount, created_at=now)
         db.add(bid)
         db.flush()

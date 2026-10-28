@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 
 from app.models import Category, Condition, ListingStatus
 
+MAX_PRICE = 10_000_000  # whole rupees; the same cap the listing rules enforce
+
 
 class SellerPublic(BaseModel):
     id: int
@@ -50,8 +52,8 @@ class ListingUpdate(BaseModel):
     category: Category | None = None
     condition: Condition | None = None
     description: str | None = Field(default=None, max_length=5000)
-    starting_price: int | None = Field(default=None, ge=1)
-    min_increment: int | None = Field(default=None, ge=1)
+    starting_price: int | None = Field(default=None, ge=1, le=MAX_PRICE)
+    min_increment: int | None = Field(default=None, ge=1, le=MAX_PRICE)
     closes_at: datetime | None = None
 
 
@@ -73,7 +75,9 @@ class ListingDetail(BaseModel):
     bid_count: int
     leading_bidder: str | None  # display name only
     outcome_note: str | None
+    edited_at: datetime | None  # when the seller last changed the listing, if ever
     images: list[str]  # URLs under /media
+    image_ids: list[int]  # the same photos' ids, in the same order (needed to remove one)
     seller: SellerPublic
     created_at: datetime
     # Clients render countdowns from closes_at against this, never their own clock.

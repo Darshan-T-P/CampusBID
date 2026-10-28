@@ -118,10 +118,11 @@ def test_min_price_above_max_price_is_rejected(client):
     assert client.get("/listings", params={"min_price": 500, "max_price": 100}).status_code == 422
 
 
-def test_closing_soon_window_is_one_hour(client, db_session, seller):
+def test_closing_soon_window_is_24_hours(client, db_session, seller):
     add(db_session, seller, "In 30 min", closes_in=timedelta(minutes=30))
-    add(db_session, seller, "In 3 hours", closes_in=timedelta(hours=3))
-    assert titles(client, closing_soon="true") == ["In 30 min"]
+    add(db_session, seller, "In 20 hours", closes_in=timedelta(hours=20))
+    add(db_session, seller, "In 2 days", closes_in=timedelta(days=2))
+    assert sorted(titles(client, closing_soon="true")) == ["In 20 hours", "In 30 min"]
 
 
 def test_sort_orders(client, db_session, seller):

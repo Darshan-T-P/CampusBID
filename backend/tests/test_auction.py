@@ -96,10 +96,19 @@ def test_equal_bid_is_rejected_so_earliest_wins(db_session, listing, alice, bob)
     assert listing.leading_bid_id == first.id
 
 
-def test_leader_can_raise_own_bid(db_session, listing, alice):
+def test_leader_cannot_bid_against_themselves(db_session, listing, alice):
     place_bid(db_session, listing.id, alice.id, 100, now=NOW)
-    place_bid(db_session, listing.id, alice.id, 120, now=NOW)
-    assert [b.amount for b in bids_for(db_session, listing.id)] == [100, 120]
+    with pytest.raises(BidError) as exc:
+        place_bid(db_session, listing.id, alice.id, 120, now=NOW)
+    assert exc.value.code == "already_leading"
+    assert [b.amount for b in bids_for(db_session, listing.id)] == [100]  # nothing was recorded
+
+
+def test_a_bidder_may_bid_again_once_outbid(db_session, listing, alice, bob):
+    place_bid(db_session, listing.id, alice.id, 100, now=NOW)
+    place_bid(db_session, listing.id, bob.id, 110, now=NOW)
+    place_bid(db_session, listing.id, alice.id, 120, now=NOW)  # Alice is no longer the leader
+    assert [b.amount for b in bids_for(db_session, listing.id)] == [100, 110, 120]
 
 
 def test_seller_cannot_bid_on_own_listing(db_session, listing, seller):

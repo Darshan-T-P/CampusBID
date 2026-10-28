@@ -2,11 +2,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.schemas.listing import ListingDetail
+from app.schemas.listing import MAX_PRICE, ListingDetail
 
 
 class BidCreate(BaseModel):
-    amount: int = Field(ge=1, description="Whole rupees")
+    amount: int = Field(ge=1, le=MAX_PRICE, description="Whole rupees")
 
 
 class BidPublic(BaseModel):

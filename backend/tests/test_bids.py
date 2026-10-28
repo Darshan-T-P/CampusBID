@@ -145,3 +145,16 @@ def test_simultaneous_identical_bids_through_the_whole_stack_only_one_wins(clien
 
     assert sorted(codes) == [201] + [409] * 7
     assert len(client.get(f"/listings/{lid}/bids").json()) == 1
+
+
+def test_the_leader_cannot_bid_against_themselves(client, lid, alice_h, bob_h):
+    assert bid(client, alice_h, lid, 500).status_code == 201
+    r = bid(client, alice_h, lid, 600)
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "already_leading"
+    assert len(client.get(f"/listings/{lid}/bids").json()) == 1
+    bid(client, bob_h, lid, 550)
+    assert bid(client, alice_h, lid, 600).status_code == 201  # allowed again once Bob leads
+
+
+def test_bid_amount_has_an_upper_cap(client, lid, alice_h):
+    assert bid(client, alice_h, lid, 10_000_001).status_code == 422

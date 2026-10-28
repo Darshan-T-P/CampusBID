@@ -13,6 +13,7 @@ _HTTP_STATUS = {
     "not_found": status.HTTP_404_NOT_FOUND,
     "own_listing": status.HTTP_403_FORBIDDEN,
     "closed": status.HTTP_409_CONFLICT,
+    "already_leading": status.HTTP_409_CONFLICT,  # raising your own lead only pushes the price up
     "too_low": status.HTTP_409_CONFLICT,  # state moved on: someone may have bid higher meanwhile
 }
 
