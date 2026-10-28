@@ -77,7 +77,9 @@ export function ListingPage() {
     queryFn: () => api('/me/auto-bids'),
     enabled: isSignedIn && listing !== undefined,
   })
-  const myMax = myAutoQuery.data?.find((row) => row.listing_id === Number(id))?.max_amount ?? null
+  const myAutoRow = myAutoQuery.data?.find((row) => row.listing_id === Number(id))
+  const myMax = myAutoRow?.max_amount ?? null
+  const myStep = myAutoRow?.step ?? null
   const autoBidsQuery = useQuery({
     queryKey: ['auto-bids', id],
     queryFn: () => api(`/listings/${id}/auto-bids`),
@@ -331,7 +333,7 @@ export function ListingPage() {
                         <strong className="spec-val">{formatRupees(listing.starting_price)}</strong>
                       </div>
                       <div className="spec-item">
-                        <span className="spec-label">Min Increment</span>
+                        <span className="spec-label">Minimum raise</span>
                         <strong className="spec-val">{formatRupees(listing.min_increment)}</strong>
                       </div>
                       <div className="spec-item">
@@ -377,7 +379,7 @@ export function ListingPage() {
                   <p className="muted small info-banner">
                     <Icon name="shield" size={14} /> Maximum limits are transparent and visible to all students. The system only bids on your behalf as much as necessary to maintain the lead.
                   </p>
-                  <AutoBidList autoBids={autoBidsQuery.data ?? []} />
+                  <AutoBidList autoBids={autoBidsQuery.data ?? []} minRaise={listing.min_increment} />
                 </div>
               )}
             </div>
@@ -386,7 +388,7 @@ export function ListingPage() {
 
         {/* Right Column: Sticky Bidding Console, Handover Security, and Q&A */}
         <div className="area-panel">
-          <BidPanel listing={listing} myBid={myBid} myMax={myMax} />
+          <BidPanel listing={listing} myBid={myBid} myMax={myMax} myStep={myStep} />
           {isSignedIn && listing.status === 'reserved' && <ContactCard listingId={listing.id} />}
 
           {/* Handover & Security Protocol Card */}

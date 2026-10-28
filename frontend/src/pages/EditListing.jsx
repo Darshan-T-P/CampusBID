@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError, api, mediaUrl, serverNow } from '../api/client'
 import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
+import { RaiseNote } from '../components/RaiseNote'
+import { parseAmount } from '../lib/bidding'
 import { CATEGORIES, CONDITIONS } from '../lib/format'
 import {
   FROZEN_AFTER_BID,
@@ -208,12 +210,11 @@ function EditForm({ listing }) {
             <input inputMode="numeric" value={values.startingPrice} onChange={set('startingPrice')} disabled={isLocked('startingPrice')} aria-invalid={errors.startingPrice ? 'true' : undefined} />
             <FieldError message={errors.startingPrice} />
           </label>
-          <label>
-            Minimum raise (₹)
-            <input inputMode="numeric" value={values.minIncrement} onChange={set('minIncrement')} disabled={isLocked('minIncrement')} aria-invalid={errors.minIncrement ? 'true' : undefined} />
-            <FieldError message={errors.minIncrement} />
-          </label>
         </div>
+        <RaiseNote
+          startingPrice={parseAmount(values.startingPrice)}
+          current={parseAmount(values.startingPrice) === parseAmount(initial.startingPrice) ? listing.min_increment : null}
+        />
         <label>
           Auction ends
           <input type="datetime-local" value={values.closesAt} onChange={set('closesAt')} disabled={isLocked('closesAt')} aria-invalid={errors.closesAt ? 'true' : undefined} />

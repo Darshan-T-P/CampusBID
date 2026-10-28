@@ -27,7 +27,7 @@ def bid_history(db: Session, listing_id: int) -> list[BidPublic]:
 
 
 def auto_bid_to_public(auto: AutoBid) -> AutoBidPublic:
-    return AutoBidPublic(bidder_name=auto.user.display_name, max_amount=auto.max_amount, set_at=auto.set_at)
+    return AutoBidPublic(bidder_name=auto.user.display_name, max_amount=auto.max_amount, step=auto.step, set_at=auto.set_at)
 
 
 def list_auto_bids(db: Session, listing_id: int) -> list[AutoBidPublic]:

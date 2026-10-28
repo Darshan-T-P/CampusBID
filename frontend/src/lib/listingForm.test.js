@@ -21,7 +21,6 @@ const good = () => ({
   condition: 'good',
   description: 'Barely used',
   startingPrice: '500',
-  minIncrement: '50',
   closesAt: inHours(24),
 })
 
@@ -55,9 +54,9 @@ describe('validateListing', () => {
     expect(validateListing(good(), [png()], NOW)).toEqual({})
   })
   it('flags every missing field at once', () => {
-    const blank = { title: '', category: '', condition: '', description: '', startingPrice: '', minIncrement: '', closesAt: '' }
+    const blank = { title: '', category: '', condition: '', description: '', startingPrice: '', closesAt: '' }
     expect(Object.keys(validateListing(blank, [], NOW)).sort()).toEqual(
-      ['category', 'closesAt', 'condition', 'minIncrement', 'photos', 'startingPrice', 'title'],
+      ['category', 'closesAt', 'condition', 'photos', 'startingPrice', 'title'],
     )
   })
   it('treats a blank-looking title as missing', () => {
@@ -66,7 +65,6 @@ describe('validateListing', () => {
   it('wants whole, positive, bounded prices', () => {
     for (const bad of ['0', '-5', '12.5', 'abc', '10000001']) {
       expect(validateListing({ ...good(), startingPrice: bad }, [png()], NOW).startingPrice, bad).toBeTruthy()
-      expect(validateListing({ ...good(), minIncrement: bad }, [png()], NOW).minIncrement, bad).toBeTruthy()
     }
     expect(validateListing({ ...good(), startingPrice: '10000000' }, [png()], NOW).startingPrice).toBeUndefined()
   })
@@ -96,7 +94,7 @@ describe('editing a listing', () => {
   const initial = valuesFromListing(listing)
 
   it('fills the form from the listing', () => {
-    expect(initial).toMatchObject({ title: 'Hero cycle', startingPrice: '500', minIncrement: '50', description: 'Barely used' })
+    expect(initial).toMatchObject({ title: 'Hero cycle', startingPrice: '500', description: 'Barely used' })
     expect(parseLocalInput(initial.closesAt)).not.toBeNull()
   })
   it('reports nothing changed for an untouched form (even with stray spaces)', () => {
@@ -124,14 +122,14 @@ describe('editing a listing', () => {
   })
   it('freezes everything but the description once bidding has started', () => {
     expect(FROZEN_AFTER_BID).not.toContain('description')
-    expect(FROZEN_AFTER_BID).toHaveLength(6)
+    expect(FROZEN_AFTER_BID).toHaveLength(5)
   })
 })
 
 describe('handover spot', () => {
   const base = {
     title: 'Hero cycle', category: 'cycle', condition: 'good', description: '', startingPrice: '500',
-    minIncrement: '50', closesAt: inHours(24), handoverSpot: '',
+    closesAt: inHours(24), handoverSpot: '',
   }
   const listing = {
     title: 'Hero cycle', category: 'cycle', condition: 'good', description: '', starting_price: 500, min_increment: 50,

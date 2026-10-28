@@ -28,6 +28,10 @@ class BidResult(BaseModel):
 
 class AutoBidCreate(BaseModel):
     max_amount: int = Field(ge=1, le=MAX_PRICE, description="The most you are willing to pay, whole rupees")
+    step: int | None = Field(
+        default=None, ge=1, le=MAX_PRICE,
+        description="How much each automatic bid raises the price. At least the auction's minimum raise; leave out to use it.",
+    )
 
 
 class AutoBidPublic(BaseModel):
@@ -35,6 +39,7 @@ class AutoBidPublic(BaseModel):
 
     bidder_name: str
     max_amount: int
+    step: int | None = None  # their chosen raise per bid; null = the auction's minimum raise
     set_at: datetime
 
 
@@ -46,3 +51,4 @@ class AutoBidResult(BaseModel):
 class MyAutoBid(BaseModel):
     listing_id: int
     max_amount: int
+    step: int | None = None

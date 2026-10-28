@@ -7,7 +7,7 @@ from app.models import Listing
 from app.schemas.bid import AutoBidCreate, AutoBidPublic, AutoBidResult, BidCreate, BidPublic, BidResult
 from app.services import bids as bid_service
 from app.services import listings as listing_service
-from app.services.auction import BidError, place_bid, remove_auto_bid, set_auto_bid
+from app.services.auction import KEEP_STEP, BidError, place_bid, remove_auto_bid, set_auto_bid
 
 router = APIRouter(tags=["bids"])
 
@@ -17,6 +17,7 @@ _HTTP_STATUS = {
     "closed": status.HTTP_409_CONFLICT,
     "already_leading": status.HTTP_409_CONFLICT,  # raising your own lead only pushes the price up
     "too_low": status.HTTP_409_CONFLICT,  # state moved on: someone may have bid higher meanwhile
+    "invalid_step": status.HTTP_422_UNPROCESSABLE_CONTENT,  # a raise per bid below the auction's minimum
 }
 
 
@@ -71,7 +72,9 @@ def put_auto_bid(listing_id: int, body: AutoBidCreate, user: VerifiedUser, db: D
     """Set or change my maximum: the app bids for me, as little as needed, up to it."""
     enforce(f"autobid:user:{user.id}", limit=30, window=60)
     try:
-        auto = set_auto_bid(db, listing_id, user.id, body.max_amount)
+        # Leaving "step" out of the request keeps the raise they already chose; sending null resets it to the auction's minimum.
+        step = body.step if "step" in body.model_fields_set else KEEP_STEP
+        auto = set_auto_bid(db, listing_id, user.id, body.max_amount, step=step)
     except BidError as e:
         raise _bid_http_error(e) from e
     listing = db.get(Listing, listing_id)

@@ -22,6 +22,9 @@ class AutoBid(Base):
     listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     max_amount: Mapped[int] = mapped_column(Integer)
+    # How much the buyer wants each automatic bid to raise the price. Empty means "the auction's minimum raise" (the default).
+    # The auction's minimum is the floor: every bid has to clear it, whoever places it.
+    step: Mapped[int | None] = mapped_column(Integer, default=None)
     # When this ceiling was committed to. On a tie between two maximums, the earlier commitment wins;
     # changing your maximum resets it, so nobody can bank an early slot with a low number.
     set_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)

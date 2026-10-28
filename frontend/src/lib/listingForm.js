@@ -80,8 +80,6 @@ export function validateListing(values, files, nowMs) {
 
   const price = validatePrice(values.startingPrice, 'a starting price')
   if (price) errors.startingPrice = price
-  const increment = validatePrice(values.minIncrement, 'a minimum bid increase')
-  if (increment) errors.minIncrement = increment
 
   const closes = parseLocalInput(values.closesAt)
   if (!values.closesAt) errors.closesAt = 'Choose when the auction should end'
@@ -97,16 +95,15 @@ export function validateListing(values, files, nowMs) {
 // --- editing an existing listing ---------------------------------------------------------------
 
 /** After the first bid these can no longer change (so bidders aren't misled); the backend enforces it too. */
-export const FROZEN_AFTER_BID = ['title', 'category', 'condition', 'startingPrice', 'minIncrement', 'closesAt']
+export const FROZEN_AFTER_BID = ['title', 'category', 'condition', 'startingPrice', 'closesAt']
 
-const FIELD_KEYS = ['title', 'category', 'condition', 'description', 'startingPrice', 'minIncrement', 'closesAt', 'handoverSpot']
+const FIELD_KEYS = ['title', 'category', 'condition', 'description', 'startingPrice', 'closesAt', 'handoverSpot']
 const API_NAME = {
   title: 'title',
   category: 'category',
   condition: 'condition',
   description: 'description',
   startingPrice: 'starting_price',
-  minIncrement: 'min_increment',
   closesAt: 'closes_at',
   handoverSpot: 'handover_spot',
 }
@@ -120,14 +117,13 @@ export function valuesFromListing(listing) {
     description: listing.description ?? '',
     handoverSpot: listing.handover_spot ?? '',
     startingPrice: String(listing.starting_price),
-    minIncrement: String(listing.min_increment),
     closesAt: toLocalInputValue(new Date(listing.closes_at)),
   }
 }
 
 /** Which form fields differ from how the listing was loaded. */
 export function changedFields(initial, values) {
-  const norm = (key, v) => (['title', 'description', 'startingPrice', 'minIncrement', 'handoverSpot'].includes(key) ? v.trim() : v)
+  const norm = (key, v) => (['title', 'description', 'startingPrice', 'handoverSpot'].includes(key) ? v.trim() : v)
   return FIELD_KEYS.filter((key) => norm(key, initial[key]) !== norm(key, values[key]))
 }
 
@@ -144,7 +140,7 @@ export function toPatch(values, changed) {
     let value = values[key]
     if (key === 'title' || key === 'description') value = value.trim()
     if (key === 'handoverSpot') value = value.trim() || null // cleared = no spot, which the API reads as null
-    if (key === 'startingPrice' || key === 'minIncrement') value = parseAmount(value)
+    if (key === 'startingPrice') value = parseAmount(value)
     if (key === 'closesAt') value = parseLocalInput(value).toISOString()
     body[API_NAME[key]] = value
   }

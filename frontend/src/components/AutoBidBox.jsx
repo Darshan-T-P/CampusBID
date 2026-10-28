@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api } from '../api/client'
 import { errorMessage } from '../api/errors'
-import { parseAmount } from '../lib/bidding'
+import { parseAmount, parseRaise } from '../lib/bidding'
 import { formatRupees } from '../lib/format'
 
 /**
@@ -10,13 +10,15 @@ import { formatRupees } from '../lib/format'
  * keep them in front, and never past the maximum. Maximums are public, which the box says plainly.
  *   listing  the ListingDetail
  *   myMax    this buyer's current maximum on this auction, or null
+ *   myStep   how much they chose each automatic bid should raise the price by, or null (the auction's minimum raise)
  *   leading  whether this buyer currently has the highest bid
  */
-export function AutoBidBox({ listing, myMax, leading }) {
+export function AutoBidBox({ listing, myMax, myStep = null, leading }) {
   const queryClient = useQueryClient()
   const id = String(listing.id)
   const [editing, setEditing] = useState(false)
   const [typed, setTyped] = useState('')
+  const [typedStep, setTypedStep] = useState('')
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
 
@@ -29,15 +31,23 @@ export function AutoBidBox({ listing, myMax, leading }) {
     }
   }
 
+  const minRaise = listing.min_increment
+
   const save = useMutation({
-    mutationFn: (amount) => api(`/listings/${id}/auto-bid`, { method: 'PUT', body: { max_amount: amount } }),
+    // `step` is always sent: a number is the raise they chose, null means "the auction's minimum" (and resets an old choice).
+    mutationFn: ({ amount, step }) => api(`/listings/${id}/auto-bid`, { method: 'PUT', body: { max_amount: amount, step } }),
     onSuccess: (result) => {
       queryClient.setQueryData(['listing', id], result.listing) // the app may already have bid for them
       refresh()
       setEditing(false)
       setTyped('')
+      setTypedStep('')
       setError(null)
-      setNotice(`Maximum set to ${formatRupees(result.auto_bid.max_amount)}.`)
+      setNotice(
+        `Limit set to ${formatRupees(result.auto_bid.max_amount)}, raising ${
+          result.auto_bid.step ? `${formatRupees(result.auto_bid.step)} each time` : `by the minimum raise (${formatRupees(minRaise)})`
+        }.`,
+      )
     },
     onError: (e) => {
       setNotice(null)
@@ -70,8 +80,10 @@ export function AutoBidBox({ listing, myMax, leading }) {
     const amount = parseAmount(typed)
     if (amount === null) return setError('Enter a whole number of rupees')
     if (floor != null && amount < floor) return setError(`Your maximum must be at least ${formatRupees(floor)}`)
+    const raise = parseRaise(typedStep, minRaise)
+    if (raise.error) return setError(raise.error)
     setError(null)
-    save.mutate(amount)
+    save.mutate({ amount, step: raise.value })
   }
 
   const showForm = myMax == null || editing
@@ -81,15 +93,17 @@ export function AutoBidBox({ listing, myMax, leading }) {
       <div className="auto-head">
         <strong>Automatic Bidding</strong>
         <span className="muted small">
-          Set your maximum limit and CampusBid will bid for you automatically, only as needed to keep you in the lead. Limits are public.
+          Set your maximum limit and CampusBid bids for you automatically to keep you in the lead. Each automatic bid raises the price
+          by the auction's minimum raise ({formatRupees(minRaise)}) unless you choose a bigger raise. Limits are public.
         </span>
       </div>
 
       {myMax != null && !editing && (
         <p className="auto-current">
           Your limit: <strong>{formatRupees(myMax)}</strong>
+          <span className="muted small"> · raises {myStep ? formatRupees(myStep) : `${formatRupees(minRaise)} (the minimum)`} each time</span>
           <span className="auto-actions">
-            <button type="button" className="link-button" onClick={() => { setEditing(true); setTyped(String(myMax)); setNotice(null) }}>
+            <button type="button" className="link-button" onClick={() => { setEditing(true); setTyped(String(myMax)); setTypedStep(myStep ? String(myStep) : ''); setNotice(null) }}>
               Change
             </button>
             <button type="button" className="link-button" disabled={remove.isPending} onClick={() => remove.mutate()}>
@@ -115,6 +129,18 @@ export function AutoBidBox({ listing, myMax, leading }) {
             <button className="btn btn-ghost" disabled={save.isPending}>
               {save.isPending ? 'Saving…' : myMax == null ? 'Set limit' : 'Update limit'}
             </button>
+          </div>
+          <div className="auto-step-row">
+            <label htmlFor="auto-step">Raise by (₹) each time</label>
+            <input
+              id="auto-step"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder={`${minRaise} (the minimum)`}
+              value={typedStep}
+              onChange={(e) => { setTypedStep(e.target.value); setError(null) }}
+            />
+            <small className="muted">Optional. A bigger raise jumps ahead faster but costs you more. It can't be below {formatRupees(minRaise)}.</small>
           </div>
           {editing && (
             <button type="button" className="link-button small" onClick={() => { setEditing(false); setError(null) }}>

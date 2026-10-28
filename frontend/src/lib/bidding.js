@@ -55,3 +55,15 @@ export function closedMessage(listing) {
       return null
   }
 }
+
+/**
+ * The "raise by" an automatic bidder typed. Blank means "use the auction's minimum raise" ({ value: null }).
+ * Otherwise a whole number of rupees, at least the auction's minimum raise.
+ */
+export function parseRaise(text, minRaise) {
+  if (String(text ?? '').trim() === '') return { value: null }
+  const n = parseAmount(text)
+  if (n === null) return { error: 'Enter a whole number of rupees for the raise' }
+  if (minRaise != null && n < minRaise) return { error: `The raise must be at least ${formatRupees(minRaise)}, the minimum raise` }
+  return { value: n }
+}

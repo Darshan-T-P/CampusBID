@@ -125,15 +125,22 @@ def _resolve_auto_bids(db: Session, listing: Listing, now: datetime) -> None:
     settles it against the current leader, whose "ceiling" is the higher of their price and their own
     maximum:
 
-    * challenger above the ceiling  -> challenger leads, one step over the ceiling (never past their maximum)
+    * challenger above the ceiling  -> challenger leads, one raise over the ceiling (never past their maximum)
     * leader at or above it         -> the challenger bids as high as the leader can still answer, and the
-                                       leader's own maximum answers one step higher
+                                       leader's own maximum answers one raise higher
+
+    "One raise" is the buyer's own chosen step if they set one, else the auction's minimum raise (which is also the
+    floor for any chosen step, so every bid still clears the normal increment rule).
     * challenger cannot afford a valid bid -> they are skipped this round
 
     Every bid made this way clears the normal increment rule, so the history reads like real bidding.
     Runs inside the caller's write lock, so it can't race with anyone.
     """
-    step = listing.min_increment
+    step = listing.min_increment  # the auction's minimum raise: what every bid must clear
+
+    def raise_of(auto: AutoBid) -> int:
+        return max(auto.step or step, step)
+
     skipped: set[int] = set()
     for _ in range(500):  # each round raises the price or retires a challenger; this is only a safety net
         leader_id = notifications.winner_id(db, listing)
@@ -155,21 +162,26 @@ def _resolve_auto_bids(db: Session, listing: Listing, now: datetime) -> None:
             and (challenger.set_at, challenger.id) < (leader_auto.set_at, leader_auto.id)
         )
         if challenger.max_amount > ceiling or (challenger.max_amount == ceiling and challenger_committed_first):
-            _insert_bid(db, listing, challenger.user_id, min(challenger.max_amount, ceiling + step), now, is_auto=True)
+            _insert_bid(db, listing, challenger.user_id, min(challenger.max_amount, ceiling + raise_of(challenger)), now, is_auto=True)
         else:
             highest = min(challenger.max_amount, ceiling - step)  # the most the leader can still answer
             if highest < needed:
                 skipped.add(challenger.id)
                 continue
             _insert_bid(db, listing, challenger.user_id, highest, now, is_auto=True)
-            _insert_bid(db, listing, leader_id, highest + step, now, is_auto=True)
+            _insert_bid(db, listing, leader_id, min(leader_auto.max_amount, highest + raise_of(leader_auto)), now, is_auto=True)
     raise RuntimeError("automatic bidding did not settle")
 
 
+# "I didn't say": leave a raise the buyer already chose alone (as opposed to None, which resets it to the auction's minimum).
+KEEP_STEP = object()
+
+
 def set_auto_bid(
-    db: Session, listing_id: int, user_id: int, max_amount: int, now: datetime | None = None
+    db: Session, listing_id: int, user_id: int, max_amount: int, now: datetime | None = None, step: int | None | object = KEEP_STEP
 ) -> AutoBid:
-    """Set or change my maximum on an auction. The app then bids for me, as little as needed, up to it."""
+    """Set or change my maximum on an auction. The app then bids for me, up to it, raising the price by `step` each
+    time (the auction's minimum raise when I don't choose one). Leaving `step` out keeps what I had; None resets it."""
     now = now or utcnow()
     begin_write(db)
     try:
@@ -186,6 +198,12 @@ def set_auto_bid(
         if user_id == listing.seller_id:
             raise BidError("own_listing", "You cannot bid on your own listing")
 
+        if step is not KEEP_STEP and step is not None and step < listing.min_increment:
+            raise BidError(
+                "invalid_step", f"Your raise per bid must be at least {listing.min_increment}, this auction's minimum raise",
+                min_bid=listing.min_increment,
+            )
+
         leading = notifications.winner_id(db, listing) == user_id
         floor = listing.current_price if leading else min_valid_bid(listing)  # a leader only needs to cover their own price
         if max_amount < floor:
@@ -193,11 +211,14 @@ def set_auto_bid(
 
         auto = db.scalar(select(AutoBid).where(AutoBid.listing_id == listing.id, AutoBid.user_id == user_id))
         if auto is None:
-            auto = AutoBid(listing_id=listing.id, user_id=user_id, max_amount=max_amount, set_at=now)
+            auto = AutoBid(listing_id=listing.id, user_id=user_id, max_amount=max_amount, step=None if step is KEEP_STEP else step, set_at=now)
             db.add(auto)
-        elif auto.max_amount != max_amount:
-            auto.max_amount = max_amount
-            auto.set_at = now  # a new commitment goes to the back of the queue on ties
+        else:
+            if auto.max_amount != max_amount:
+                auto.max_amount = max_amount
+                auto.set_at = now  # a new commitment goes to the back of the queue on ties
+            if step is not KEEP_STEP:
+                auto.step = step  # changing only the raise keeps the place in the queue
         db.flush()
         _resolve_auto_bids(db, listing, now)
         db.commit()

@@ -18,8 +18,9 @@ import { StatusBadge } from './StatusBadge'
  *   listing  the ListingDetail from the API
  *   myBid    this user's row from /me/bids for this listing ({ my_highest_bid, is_leading }) or undefined
  *   myMax    this user's automatic-bidding maximum on this auction, or null
+ *   myStep   how much they chose each automatic bid should raise the price by, or null (the seller's minimum)
  */
-export function BidPanel({ listing, myBid, myMax = null }) {
+export function BidPanel({ listing, myBid, myMax = null, myStep = null }) {
   const { user, isSignedIn } = useAuth()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -268,8 +269,21 @@ export function BidPanel({ listing, myBid, myMax = null }) {
           )}
 
           <p id="bid-hint" className="bid-increment-hint">
-            Bids must increase by at least {formatRupees(listing.min_increment)}
+            Bids must increase by at least {formatRupees(listing.min_increment)}. This minimum is set automatically for this auction,
+            and you can always bid more.
           </p>
+          <details className="how-bidding">
+            <summary>How bidding works</summary>
+            <ul>
+              <li>The highest bid when the timer ends wins. The seller then approves the sale and you arrange the handover on campus.</li>
+              <li>Each bid must beat the current price by at least {formatRupees(listing.min_increment)}. Bid more if you want to get ahead.</li>
+              <li>
+                <strong>Automatic bidding:</strong> set a limit and the app bids for you, up to that limit. By default each automatic bid raises the
+                price by {formatRupees(listing.min_increment)}; you can choose a bigger raise. Limits are public.
+              </li>
+              <li>A bid in the last 30 seconds extends the auction by a minute, so nobody wins by sniping.</li>
+            </ul>
+          </details>
 
           {error && (
             <div className="error-box" role="alert">
@@ -286,7 +300,7 @@ export function BidPanel({ listing, myBid, myMax = null }) {
 
       {/* Automatic Proxy Bidding Box */}
       {isOpen && !timeUp && isSignedIn && !isSeller && user?.is_verified && (
-        <AutoBidBox listing={listing} myMax={myMax} leading={isLeading} />
+        <AutoBidBox listing={listing} myMax={myMax} myStep={myStep} leading={isLeading} />
       )}
 
       {/* Footer Info */}

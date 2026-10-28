@@ -36,6 +36,7 @@ export function Layout() {
             <NavLink to="/" end>
               Browse
             </NavLink>
+            <NavLink to="/trends">Trends & Insights</NavLink>
             <NavLink to="/sell">Sell an item</NavLink>
             {isSignedIn && <NavLink to="/watchlist">Watchlist</NavLink>}
             {isSignedIn && <NavLink to="/assistant">Assistant</NavLink>}

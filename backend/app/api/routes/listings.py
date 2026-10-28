@@ -35,7 +35,8 @@ def create_listing(
     condition: Annotated[Condition, Form()],
     starting_price: Annotated[int, Form(ge=1, le=MAX_PRICE)],
     closes_at: Annotated[datetime, Form()],
-    min_increment: Annotated[int, Form(ge=1, le=MAX_PRICE)] = 1,
+    # Optional: left out, the app works it out from the starting price (about 5%, tidied). The web form no longer sends it.
+    min_increment: Annotated[int | None, Form(ge=1, le=MAX_PRICE)] = None,
     description: Annotated[str, Form(max_length=5000)] = "",
     handover_spot: Annotated[str | None, Form(max_length=120)] = None,
     confirm_duplicate: Annotated[bool, Form(description="Yes, this really is a second item")] = False,

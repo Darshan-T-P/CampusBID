@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { closedMessage, parseAmount, statusInfo, validateBid } from './bidding'
+import { closedMessage, parseAmount, parseRaise, statusInfo, validateBid } from './bidding'
 
 describe('parseAmount', () => {
   it('accepts whole positive numbers, with stray spaces or commas', () => {
@@ -44,5 +44,23 @@ describe('statusInfo / closedMessage', () => {
   })
   it('has no message for an open listing', () => {
     expect(closedMessage({ status: 'active' })).toBeNull()
+  })
+})
+
+describe('parseRaise', () => {
+  it('blank means the minimum raise', () => {
+    expect(parseRaise('', 50)).toEqual({ value: null })
+    expect(parseRaise('   ', 50)).toEqual({ value: null })
+  })
+  it('accepts a whole number at or above the minimum', () => {
+    expect(parseRaise('100', 50)).toEqual({ value: 100 })
+    expect(parseRaise('50', 50)).toEqual({ value: 50 })
+    expect(parseRaise('1,200', 50)).toEqual({ value: 1200 })
+  })
+  it('refuses a raise below the minimum, and anything that is not a whole number', () => {
+    expect(parseRaise('25', 50).error).toMatch(/at least ₹50/)
+    expect(parseRaise('12.5', 10).error).toMatch(/whole number/)
+    expect(parseRaise('abc', 10).error).toMatch(/whole number/)
+    expect(parseRaise('0', 10).error).toMatch(/whole number/)
   })
 })

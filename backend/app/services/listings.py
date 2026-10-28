@@ -67,6 +67,21 @@ def _validate_images(images: list[bytes], existing: int = 0) -> list[str]:
     return extensions
 
 
+# Tidy raise sizes, so an automatic minimum reads like a number a person would choose (₹25, not ₹23).
+_TIDY_STEPS = (1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000, 25000, 50000, 100000)
+RAISE_FRACTION = 0.05  # about 5% of the starting price
+
+
+def default_min_increment(starting_price: int) -> int:
+    """The minimum raise for an auction, worked out from its starting price (sellers no longer type one).
+
+    About 5% of the starting price, rounded to a tidy number: a ₹500 item rises by ₹25, a ₹1,800 cycle by ₹100, a ₹150 book
+    by ₹5. It is the floor for every bid; buyers can always bid more, and automatic bidders can choose a bigger raise.
+    """
+    target = starting_price * RAISE_FRACTION
+    return min(_TIDY_STEPS, key=lambda step: (abs(step - target), step))  # the nearest tidy number; the smaller on a tie
+
+
 def _clean_fields(fields: dict, now: datetime) -> dict:
     """The single set of field rules, used by both create and edit."""
     clean = {}
@@ -232,7 +247,7 @@ def create_listing(
     condition: Condition,
     description: str,
     starting_price: int,
-    min_increment: int,
+    min_increment: int | None,
     closes_at: datetime,
     images: list[bytes],
     handover_spot: str | None = None,
@@ -240,6 +255,8 @@ def create_listing(
     now: datetime | None = None,
 ) -> Listing:
     now = now or utcnow()
+    if min_increment is None:
+        min_increment = default_min_increment(starting_price)
     fields = _clean_fields(
         dict(
             title=title,
@@ -296,7 +313,11 @@ def update_listing(
                     "Bidding has started, so these can no longer be changed: " + ", ".join(locked),
                     "conflict",
                 )
-        for key, value in _clean_fields(changes, now).items():
+        cleaned = _clean_fields(changes, now)
+        if "starting_price" in cleaned and "min_increment" not in cleaned:
+            # The seller no longer picks the raise, so it follows the price. (A price can only change before any bid.)
+            cleaned["min_increment"] = default_min_increment(cleaned["starting_price"])
+        for key, value in cleaned.items():
             setattr(listing, key, value)
         listing.edited_at = now
         db.commit()

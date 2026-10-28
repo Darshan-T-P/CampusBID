@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import auth, bids, listings, me, notifications, pricing, questions, sale, wants, watchlist
+from app.api.routes import analytics, auth, bids, listings, me, notifications, pricing, questions, sale, wants, watchlist
 from app.core.clock import utcnow
 from app.core.config import settings
 from app.core.middleware import SecurityMiddleware
@@ -79,6 +79,7 @@ app.include_router(watchlist.router)
 app.include_router(wants.router)
 app.include_router(pricing.router)
 app.include_router(questions.router)
+app.include_router(analytics.router)
 
 
 class CachedStaticFiles(StaticFiles):

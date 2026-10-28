@@ -7,6 +7,7 @@ import { useAuth } from '../auth/useAuth'
 import { Icon } from '../components/Icon'
 import { PhotoPicker } from '../components/PhotoPicker'
 import { PriceSuggestion } from '../components/PriceSuggestion'
+import { RaiseNote } from '../components/RaiseNote'
 import { CATEGORIES, CONDITIONS, categoryLabel, conditionLabel, formatRemaining, formatRupees } from '../lib/format'
 import { parseAmount } from '../lib/bidding'
 import {
@@ -28,7 +29,6 @@ const EMPTY = {
   description: '',
   handoverSpot: '',
   startingPrice: '',
-  minIncrement: '10',
   closesAt: '',
 }
 
@@ -94,7 +94,7 @@ const TIPS = [
   'Use clear, well-lit photos from a few angles. The first photo is the cover.',
   'Describe any wear or damage and what is included. Honest listings get more bids.',
   'End the auction when students are around, and give it at least a day.',
-  'A low starting price attracts early bids; the minimum raise keeps the bidding moving.',
+  'A low starting price attracts early bids. The app sets a sensible minimum raise for you, so the bidding keeps moving.',
   'A bid in the last 30 seconds extends the auction by a minute, so you can never be sniped.',
   'Meet at a public spot on campus, in daylight.',
 ]
@@ -162,7 +162,6 @@ export function Sell() {
     form.append('description', values.description.trim())
     if (values.handoverSpot.trim()) form.append('handover_spot', values.handoverSpot.trim())
     form.append('starting_price', values.startingPrice.trim().replace(/,/g, ''))
-    form.append('min_increment', values.minIncrement.trim().replace(/,/g, ''))
     // The picker gives local time with no zone; the server needs an absolute moment, so send UTC.
     form.append('closes_at', parseLocalInput(values.closesAt).toISOString())
     files.forEach((file) => form.append('images', file))
@@ -265,7 +264,7 @@ export function Sell() {
           <section className="card form-section" aria-labelledby="s-price">
             <div>
               <h2 id="s-price">Price and timing</h2>
-              <p className="muted small">Bidding starts at your price and rises by at least the minimum raise.</p>
+              <p className="muted small">Bidding starts at your price. Each later bid has to beat the last by a small step, which the app sets for you.</p>
             </div>
             <PriceSuggestion
               category={values.category}
@@ -286,19 +285,8 @@ export function Sell() {
                 <small className="muted">The lowest first bid you'll accept.</small>
                 <FieldError id="err-start" message={errors.startingPrice} />
               </label>
-              <label>
-                Minimum raise (₹)
-                <input
-                  inputMode="numeric"
-                  value={values.minIncrement}
-                  onChange={set('minIncrement')}
-                  aria-invalid={errors.minIncrement ? 'true' : undefined}
-                  aria-describedby="err-inc"
-                />
-                <small className="muted">Each bid must beat the last by at least this much.</small>
-                <FieldError id="err-inc" message={errors.minIncrement} />
-              </label>
             </div>
+            <RaiseNote startingPrice={parseAmount(values.startingPrice)} />
             <fieldset className="closing">
               <legend>Auction ends</legend>
               <div className="presets">

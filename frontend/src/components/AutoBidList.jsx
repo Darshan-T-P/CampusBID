@@ -1,7 +1,7 @@
 import { formatRupees } from '../lib/format'
 
 /** Everyone's standing maximums on an auction. Public by design: nothing about bidding is private. */
-export function AutoBidList({ autoBids }) {
+export function AutoBidList({ autoBids, minRaise = null }) {
   if (autoBids.length === 0) {
     return <p className="muted">No one has set an automatic bid limit on this auction.</p>
   }
@@ -11,7 +11,9 @@ export function AutoBidList({ autoBids }) {
         <li key={`${a.bidder_name}-${i}`}>
           <span className="history-amount">{formatRupees(a.max_amount)}</span>
           <span className="history-who">{a.bidder_name}</span>
-          <span className="muted small">limit</span>
+          <span className="muted small">
+            limit{minRaise != null && <> · raises {formatRupees(a.step ?? minRaise)}</>}
+          </span>
         </li>
       ))}
     </ul>

@@ -305,7 +305,7 @@ def test_http_maximums_are_public_and_names_only(client, lid):
     r = client.get(f"/listings/{lid}/auto-bids")  # no login needed: nothing about bidding is private
     assert r.status_code == 200
     assert [(a["bidder_name"], a["max_amount"]) for a in r.json()] == [("Ann", 1800), ("Ben", 900)]  # highest first
-    assert "@" not in r.text and set(r.json()[0]) == {"bidder_name", "max_amount", "set_at"}
+    assert "@" not in r.text and set(r.json()[0]) == {"bidder_name", "max_amount", "step", "set_at"}
 
 
 def test_http_the_automatic_bids_show_in_the_public_history(client, lid):
@@ -337,7 +337,7 @@ def test_http_the_seller_gets_403(client):
 def test_http_remove_and_my_maximums(client, lid):
     ann = auth_header(client, email="ann@campus.edu", name="Ann")
     put_max(client, ann, lid, 1500)
-    assert client.get("/me/auto-bids", headers=ann).json() == [{"listing_id": lid, "max_amount": 1500}]
+    assert client.get("/me/auto-bids", headers=ann).json() == [{"listing_id": lid, "max_amount": 1500, "step": None}]
     assert client.get("/me/auto-bids").status_code == 401
 
     assert client.delete(f"/listings/{lid}/auto-bid", headers=ann).status_code == 204

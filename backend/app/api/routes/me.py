@@ -48,7 +48,7 @@ def my_bids(user: CurrentUser, db: DbSession):
 def my_auto_bids(user: CurrentUser, db: DbSession):
     """My standing maximums, so the UI can show which auctions I have one on."""
     rows = db.scalars(select(AutoBid).where(AutoBid.user_id == user.id)).all()
-    return [MyAutoBid(listing_id=a.listing_id, max_amount=a.max_amount) for a in rows]
+    return [MyAutoBid(listing_id=a.listing_id, max_amount=a.max_amount, step=a.step) for a in rows]
 
 
 @router.patch("", response_model=UserMe)
