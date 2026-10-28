@@ -8,7 +8,6 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-356%20backend%20%2B%2088%20frontend-brightgreen)
 
 </div>
 
