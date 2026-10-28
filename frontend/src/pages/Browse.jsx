@@ -20,7 +20,7 @@ import {
 
 export function Browse() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user, isSignedIn } = useAuth()
+  const { isSignedIn } = useAuth()
   const filters = filtersFromParams(searchParams)
   const priceRangeInvalid = isPriceRangeInvalid(filters)
 
@@ -64,21 +64,8 @@ export function Browse() {
 
   return (
     <div className="browse-app">
-      {isSignedIn ? (
-        /* Returning students want auctions, not a sales pitch: a slim welcome and the feed right below. */
-        <section className="app-hero app-hero-compact">
-          <div>
-            <h1 className="app-hero-title">Welcome back{user ? `, ${user.display_name.split(' ')[0]}` : ''}</h1>
-            <p className="app-hero-desc">
-              {data ? `${data.total} ${data.total === 1 ? 'auction is' : 'auctions are'} open right now.` : 'Browse what is open right now.'}
-            </p>
-          </div>
-          <div className="app-hero-actions">
-            <a href="#auctions-feed" className="btn btn-primary">Browse auctions</a>
-            <Link to="/sell" className="btn btn-ghost">List an item</Link>
-          </div>
-        </section>
-      ) : (
+      {/* The landing pitch is for visitors. Signed-in students go straight to the auctions. */}
+      {!isSignedIn && (
         <>
       {/* --- Landing Hero Section --- */}
       <section className="app-hero">
@@ -258,15 +245,22 @@ export function Browse() {
               </span>
             )}
           </div>
-          {filtered && (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setSearchParams(filtersToParams({ ...DEFAULT_FILTERS, sort: filters.sort }))}
-            >
-              Clear filters
-            </button>
-          )}
+          <div className="feed-header-right">
+            {filtered && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setSearchParams(filtersToParams({ ...DEFAULT_FILTERS, sort: filters.sort }))}
+              >
+                Clear filters
+              </button>
+            )}
+            {isSignedIn && (
+              <Link to="/sell" className="btn btn-primary btn-sm feed-sell">
+                <Icon name="tag" size={15} /> List an item
+              </Link>
+            )}
+          </div>
         </div>
 
         {priceRangeInvalid && (

@@ -125,7 +125,7 @@ function EditForm({ listing }) {
   }
 
   return (
-    <section>
+    <section className="narrow-page">
       <p className="crumbs"><Link to={`/listings/${listing.id}`}>← Back to the auction</Link></p>
       <h1>Edit listing</h1>
       {locked && (
