@@ -1103,13 +1103,49 @@ textarea::placeholder {
 
 .seller-profile-card {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 14px;
   padding: 16px 18px;
   background: #f8fafc;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   margin: 18px 0;
+}
+
+.seller-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.seller-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.seller-stats dt {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.seller-stats dd {
+  margin: 2px 0 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+@media (max-width: 520px) {
+  .seller-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .seller-avatar {

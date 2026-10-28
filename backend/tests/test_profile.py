@@ -185,3 +185,53 @@ def test_the_summary_only_counts_my_own_activity(client, db_session):
     stranger = auth_header(client, email="stranger@campus.edu", name="Stu")
     s = client.get("/me/summary", headers=stranger).json()
     assert s["selling"]["total"] == 0 and s["buying"]["auctions"] == 0
+
+
+# --- confirming the current password first ------------------------------------
+
+
+def check(client, headers, current):
+    return client.post("/me/password/check", json={"current_password": current}, headers=headers)
+
+
+def test_the_check_confirms_the_right_password_and_changes_nothing(client):
+    h = auth_header(client, password="password123")
+    assert check(client, h, "password123").status_code == 204
+    assert client.post("/auth/login", json={"email": "a@campus.edu", "password": "password123"}).status_code == 200
+    assert client.get("/me", headers=h).status_code == 200  # still signed in: no token was revoked
+
+
+def test_the_check_refuses_a_wrong_password(client):
+    h = auth_header(client, password="password123")
+    r = check(client, h, "not-my-password")
+    assert r.status_code == 403 and "current password" in r.json()["detail"]
+
+
+def test_the_check_needs_login_and_shares_the_guessing_limit(client, monkeypatch):
+    assert client.post("/me/password/check", json={"current_password": "x"}).status_code == 401
+    h = auth_header(client, password="password123")
+    limiter.reset()
+    monkeypatch.setattr(settings, "rate_limit_enabled", True)
+    codes = [check(client, h, "wrong-password").status_code for _ in range(5)]
+    codes += [change(client, h, current="wrong-password").status_code for _ in range(7)]
+    assert codes[:10] == [403] * 10 and codes[10:] == [429, 429]  # one shared budget for checking and changing
+
+
+# --- the seller's public track record ------------------------------------------
+
+
+def test_the_listing_shows_the_sellers_track_record_and_only_counts(client, db_session):
+    h = auth_header(client, email="s@campus.edu", name="Sam")
+    ids = [create(client, h, title=f"Item {i}").json()["id"] for i in range(4)]
+    client.post(f"/listings/{ids[3]}/cancel", headers=h)  # cancelled ones don't count as listed
+    listing = db_session.get(Listing, ids[0])
+    listing.status = ListingStatus.completed
+    db_session.commit()
+    expired = db_session.get(Listing, ids[1])
+    expired.closes_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    db_session.commit()
+
+    seller = client.get(f"/listings/{ids[2]}").json()["seller"]
+    assert (seller["listed"], seller["items_sold"], seller["open_now"]) == (3, 1, 1)  # open: only ids[2]
+    assert seller["member_since"]
+    assert "email" not in str(seller) and "@" not in str(seller)

@@ -13,6 +13,7 @@ const ICONS = {
   browse: icon(<><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V20h14V9.5" /></>),
   sell: icon(<><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></>),
   listings: icon(<><path d="M4 6h16M4 12h16M4 18h10" /></>),
+  watch: icon(<><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1z" /></>),
   bids: icon(<><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10" /><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8" /></>),
   signin: icon(<><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" /></>),
 }
@@ -32,6 +33,7 @@ export function Layout() {
               Browse
             </NavLink>
             <NavLink to="/sell">Sell an item</NavLink>
+            {isSignedIn && <NavLink to="/watchlist">Watchlist</NavLink>}
           </nav>
           <div className="topbar-right">
             {isSignedIn ? (
@@ -84,6 +86,10 @@ export function Layout() {
             <NavLink to="/my/bids">
               {ICONS.bids}
               <span>My bids</span>
+            </NavLink>
+            <NavLink to="/watchlist">
+              {ICONS.watch}
+              <span>Watchlist</span>
             </NavLink>
           </>
         ) : (

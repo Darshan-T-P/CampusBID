@@ -147,6 +147,7 @@ function EditProfile({ user }) {
 function ChangePassword() {
   const { changePassword } = useAuth()
   const [values, setValues] = useState({ current: '', next: '', confirm: '' })
+  const [confirmed, setConfirmed] = useState(false) // the current password has been checked and is right
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
@@ -157,6 +158,31 @@ function ChangePassword() {
   const errors = submitted ? all : {}
   const strength = passwordStrength(values.next)
 
+  function startOver() {
+    setValues({ current: '', next: '', confirm: '' })
+    setConfirmed(false)
+    setSubmitted(false)
+    setError(null)
+  }
+
+  // Step 1: the new-password fields stay hidden until the server says the current password is right.
+  async function onConfirm(event) {
+    event.preventDefault()
+    setError(null)
+    setNotice(null)
+    if (!values.current) return setError('Enter your current password')
+    setBusy(true)
+    try {
+      await api('/me/password/check', { method: 'POST', body: { current_password: values.current } })
+      setConfirmed(true)
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Step 2. The server checks the current password again, so this step is not trusted on its own.
   async function onSubmit(event) {
     event.preventDefault()
     setSubmitted(true)
@@ -165,8 +191,7 @@ function ChangePassword() {
     setBusy(true)
     try {
       await changePassword(values.current, values.next)
-      setValues({ current: '', next: '', confirm: '' })
-      setSubmitted(false)
+      startOver()
       setNotice('Password changed. Your other devices have been signed out.')
     } catch (e) {
       setError(errorMessage(e))
@@ -178,26 +203,37 @@ function ChangePassword() {
   return (
     <section className="card" aria-labelledby="pw-h">
       <h2 id="pw-h"><Icon name="lock" size={18} /> Change password</h2>
-      <form onSubmit={onSubmit} className="form" noValidate>
-        <PasswordField id="pw-current" label="Current password" autoComplete="current-password" value={values.current} onChange={set('current')} error={errors.current} />
-        <PasswordField id="pw-new" label="New password" autoComplete="new-password" value={values.next} onChange={set('next')} error={errors.next} hint="At least 8 characters.">
-          {values.next && !errors.next && (
-            <span className={`strength strength-${strength.score}`} aria-live="polite">
-              <span className="strength-bar"><span style={{ width: `${(strength.score / 4) * 100}%` }} /></span>
-              {strength.label}
-            </span>
-          )}
-        </PasswordField>
-        <PasswordField id="pw-confirm" label="Confirm new password" autoComplete="new-password" value={values.confirm} onChange={set('confirm')} error={errors.confirm}>
-          {values.confirm && values.confirm === values.next && <small className="match-ok">Passwords match</small>}
-        </PasswordField>
-        {error && <p className="error" role="alert">{error}</p>}
-        {notice && <p className="success-box" role="status">{notice}</p>}
-        <div><button className="btn btn-primary" disabled={busy}>{busy ? 'Changing…' : 'Change password'}</button></div>
-        <small className="muted">
-          Forgotten your password? Email-based reset isn't available yet, so change it here while you're signed in.
-        </small>
-      </form>
+      {!confirmed ? (
+        <form onSubmit={onConfirm} className="form" noValidate>
+          <PasswordField id="pw-current" label="Current password" autoComplete="current-password" value={values.current} onChange={set('current')} hint="Enter it to unlock the new password fields." />
+          {error && <p className="error" role="alert">{error}</p>}
+          {notice && <p className="success-box" role="status">{notice}</p>}
+          <div><button className="btn btn-primary" disabled={busy}>{busy ? 'Checking…' : 'Continue'}</button></div>
+          <small className="muted">
+            Forgot it? Sign out and choose "Forgot your password?" on the sign-in page to reset it by email.
+          </small>
+        </form>
+      ) : (
+        <form onSubmit={onSubmit} className="form" noValidate>
+          <p className="match-ok" role="status"><Icon name="check" size={14} /> Current password confirmed</p>
+          <PasswordField id="pw-new" label="New password" autoComplete="new-password" value={values.next} onChange={set('next')} error={errors.next} hint="At least 8 characters.">
+            {values.next && !errors.next && (
+              <span className={`strength strength-${strength.score}`} aria-live="polite">
+                <span className="strength-bar"><span style={{ width: `${(strength.score / 4) * 100}%` }} /></span>
+                {strength.label}
+              </span>
+            )}
+          </PasswordField>
+          <PasswordField id="pw-confirm" label="Confirm new password" autoComplete="new-password" value={values.confirm} onChange={set('confirm')} error={errors.confirm}>
+            {values.confirm && values.confirm === values.next && <small className="match-ok">Passwords match</small>}
+          </PasswordField>
+          {error && <p className="error" role="alert">{error}</p>}
+          <div className="form-actions">
+            <button className="btn btn-primary" disabled={busy}>{busy ? 'Changing…' : 'Change password'}</button>
+            <button type="button" className="btn btn-ghost" onClick={startOver} disabled={busy}>Cancel</button>
+          </div>
+        </form>
+      )}
     </section>
   )
 }
@@ -218,7 +254,7 @@ export function Profile() {
             {user.is_verified ? (
               <span className="verified-student-chip"><Icon name="shield" size={13} /> Verified student</span>
             ) : (
-              <Link to="/verify" className="warn-chip">Email not verified</Link>
+              <Link to="/verify" className="warn-chip">Verify your email</Link>
             )}
             {academic && <span className="muted">{academic}</span>}
             <span className="muted">Member since {memberSince(user.created_at)}</span>

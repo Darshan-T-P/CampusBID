@@ -11,7 +11,7 @@ from app.models import AutoBid
 from app.schemas.auth import TokenResponse, UserMe
 from app.schemas.bid import MyAutoBid
 from app.schemas.listing import ListingPage, MyBid
-from app.schemas.profile import PasswordChange, ProfileSummary, ProfileUpdate
+from app.schemas.profile import PasswordChange, PasswordCheck, ProfileSummary, ProfileUpdate
 from app.services import accounts
 from app.services import listings as listing_service
 from app.services import profile as profile_service
@@ -65,6 +65,17 @@ def update_profile(body: ProfileUpdate, user: CurrentUser, db: DbSession):
         user.year_of_study = changes["year_of_study"]
     db.commit()
     return user
+
+
+@router.post("/password/check", status_code=status.HTTP_204_NO_CONTENT)
+def check_password(body: PasswordCheck, user: CurrentUser):
+    """Is this my current password? Lets the profile page open the change form only once it is confirmed.
+
+    Changes nothing. It shares the change-password rate limit, so it is no easier to guess against.
+    """
+    enforce(f"password:user:{user.id}", limit=10, window=600)
+    if not verify_password(body.current_password, user.password_hash):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "That is not your current password")
 
 
 @router.post("/password", response_model=TokenResponse)
